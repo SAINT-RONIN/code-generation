@@ -1,8 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../services/auth'
-import { Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-vue-next'
+import { Eye, EyeOff } from 'lucide-vue-next'
 import { useBubbles } from '../composables/useBubbles'
 
 const router = useRouter()
@@ -23,7 +23,7 @@ async function handleLogin() {
     localStorage.setItem('role', data.role)
     router.push(data.role === 'EMPLOYEE' ? '/employee' : '/customer')
   } catch {
-    error.value = 'Invalid email or password.'
+    error.value = 'Incorrect email or password.'
   } finally {
     loading.value = false
   }
@@ -31,107 +31,125 @@ async function handleLogin() {
 </script>
 
 <template>
-  <div class="min-h-screen w-full bg-[#0A0A0F] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-    <!-- Bouncing background blobs -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+  <div class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style="background:#08080D;">
+
+    <!-- Blobs -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       <div
-        v-for="(blob, i) in blobs"
-        :key="i"
+        v-for="(blob, i) in blobs" :key="i"
         class="absolute rounded-full"
         :style="{
-          width: blob.size + 'px',
-          height: blob.size + 'px',
-          background: blob.color,
-          opacity: 0.13,
-          filter: `blur(${blob.size * 0.2}px)`,
+          width: blob.size + 'px', height: blob.size + 'px',
+          background: blob.color, opacity: 0.07,
+          filter: `blur(${blob.size * 0.22}px)`,
           transform: `translate(${blob.x}px, ${blob.y}px)`,
           willChange: 'transform',
         }"
-      ></div>
+      />
     </div>
 
-    <div class="relative z-10 w-full max-w-md animate-fade-up">
+    <div class="relative z-10 w-full max-w-sm fade-up">
+
       <!-- Logo -->
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 animate-pulse-glow" style="background: linear-gradient(135deg, #7B61FF, #5C45CC);">
-          <span class="text-white font-bold text-2xl tracking-tighter">N</span>
+      <div class="text-center mb-10">
+        <div
+          class="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-6"
+          style="background:linear-gradient(135deg,#7B61FF,#5C45CC);"
+          aria-hidden="true"
+        >
+          <span class="text-white font-bold text-lg">N</span>
         </div>
-        <h1 class="text-3xl font-bold tracking-tight gradient-text">Nova Bank</h1>
-        <p class="text-sm text-gray-500 mt-1.5">Premium banking, reimagined.</p>
+        <h1 class="text-2xl font-bold text-white tracking-tight">Welcome back</h1>
+        <p class="text-sm mt-1" style="color:#6B6B7E;">Sign in to Nova Bank</p>
       </div>
 
-      <!-- Card -->
-      <div class="gradient-border backdrop-blur-xl p-8 shadow-2xl" style="background: rgba(14,14,23,0.85); box-shadow: 0 25px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);">
-        <h2 class="text-xl font-semibold text-white mb-6">Sign in to your account</h2>
+      <!-- Form -->
+      <form @submit.prevent="handleLogin" novalidate aria-label="Sign in form">
 
-        <form @submit.prevent="handleLogin" class="space-y-5">
-          <!-- Error -->
-          <div v-if="error" class="flex items-center gap-3 bg-[#FF5E5B]/10 border border-[#FF5E5B]/20 text-[#FF5E5B] text-sm p-3.5 rounded-xl">
-            <div class="w-1.5 h-1.5 rounded-full bg-[#FF5E5B] flex-shrink-0"></div>
-            {{ error }}
+        <!-- Error -->
+        <div
+          v-if="error"
+          role="alert"
+          class="flex items-center gap-2.5 text-sm px-4 py-3 rounded-xl mb-5"
+          style="background:rgba(255,94,91,0.1); border:1px solid rgba(255,94,91,0.2); color:#FF5E5B;"
+        >
+          <div class="w-1.5 h-1.5 rounded-full bg-[#FF5E5B] flex-shrink-0" aria-hidden="true"></div>
+          {{ error }}
+        </div>
+
+        <!-- Email -->
+        <div class="mb-4">
+          <label for="login-email" class="block text-sm font-medium mb-2" style="color:#C0C0CE;">Email address</label>
+          <input
+            id="login-email"
+            v-model="email"
+            type="email"
+            required
+            autocomplete="email"
+            placeholder="you@example.com"
+            class="w-full px-4 py-3 text-sm text-white rounded-xl transition-colors"
+            style="background:#141420; border:1px solid rgba(255,255,255,0.08); outline:none;"
+            :style="{ boxShadow: 'none' }"
+            @focus="$event.target.style.borderColor='rgba(123,97,255,0.5)'"
+            @blur="$event.target.style.borderColor='rgba(255,255,255,0.08)'"
+          />
+        </div>
+
+        <!-- Password -->
+        <div class="mb-6">
+          <label for="login-password" class="block text-sm font-medium mb-2" style="color:#C0C0CE;">Password</label>
+          <div class="relative">
+            <input
+              id="login-password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              required
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="w-full px-4 py-3 pr-11 text-sm text-white rounded-xl transition-colors"
+              style="background:#141420; border:1px solid rgba(255,255,255,0.08); outline:none;"
+              @focus="$event.target.style.borderColor='rgba(123,97,255,0.5)'"
+              @blur="$event.target.style.borderColor='rgba(255,255,255,0.08)'"
+            />
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              class="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors"
+              style="color:#4A4A5E;"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-pressed="showPassword"
+            >
+              <EyeOff v-if="showPassword" class="w-4 h-4" aria-hidden="true" />
+              <Eye v-else class="w-4 h-4" aria-hidden="true" />
+            </button>
           </div>
+        </div>
 
-          <!-- Email -->
-          <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Email address</label>
-            <div class="relative">
-              <Mail class="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-gray-600" />
-              <input
-                v-model="email"
-                type="email"
-                required
-                autocomplete="email"
-                placeholder="you@example.com"
-                class="w-full bg-[#1C1C24] border border-white/[0.06] rounded-xl py-3 pl-11 pr-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7B61FF]/40 focus:border-[#7B61FF]/50 transition-all placeholder:text-gray-700"
-              />
-            </div>
-          </div>
-
-          <!-- Password -->
-          <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">Password</label>
-            <div class="relative">
-              <Lock class="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-gray-600" />
-              <input
-                v-model="password"
-                :type="showPassword ? 'text' : 'password'"
-                required
-                autocomplete="current-password"
-                placeholder="••••••••"
-                class="w-full bg-[#1C1C24] border border-white/[0.06] rounded-xl py-3 pl-11 pr-11 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7B61FF]/40 focus:border-[#7B61FF]/50 transition-all placeholder:text-gray-700"
-              />
-              <button type="button" @click="showPassword = !showPassword" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors">
-                <EyeOff v-if="showPassword" class="w-4 h-4" />
-                <Eye v-else class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <!-- Submit -->
-          <button
-            type="submit"
-            :disabled="loading"
-            class="w-full bg-gradient-to-r from-[#7B61FF] to-[#6050D0] text-white rounded-xl py-3 text-sm font-semibold shadow-lg shadow-[#7B61FF]/20 hover:shadow-[#7B61FF]/35 hover:from-[#8B71FF] hover:to-[#7060E0] disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-          >
-            <svg v-if="loading" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+        <!-- Submit -->
+        <button
+          type="submit"
+          :disabled="loading"
+          class="w-full py-3 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-60"
+          style="background:linear-gradient(135deg,#7B61FF,#5C45CC);"
+          :aria-busy="loading"
+        >
+          <span class="flex items-center justify-center gap-2">
+            <svg v-if="loading" class="w-4 h-4 spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            <LogIn v-else class="w-4 h-4" />
-            {{ loading ? 'Signing in...' : 'Sign In' }}
-          </button>
-        </form>
+            {{ loading ? 'Signing in…' : 'Sign in' }}
+          </span>
+        </button>
+      </form>
 
-        <div class="mt-6 pt-6 border-t border-white/[0.06] text-center">
-          <p class="text-sm text-gray-500">
-            New to Nova Bank?
-            <RouterLink to="/register" class="text-[#7B61FF] hover:text-[#9B81FF] font-medium transition-colors ml-1">
-              Open an account
-            </RouterLink>
-          </p>
-        </div>
-      </div>
+      <!-- Register link -->
+      <p class="text-center text-sm mt-6" style="color:#4A4A5E;">
+        New to Nova Bank?
+        <RouterLink to="/register" class="font-medium ml-1 transition-colors" style="color:#7B61FF;" @mouseenter="$event.target.style.color='#9B81FF'" @mouseleave="$event.target.style.color='#7B61FF'">
+          Create account
+        </RouterLink>
+      </p>
     </div>
   </div>
 </template>
-
