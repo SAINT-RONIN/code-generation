@@ -8,30 +8,29 @@
 
 ---
 
-## Phase 1 — Foundation (Both developers, Day 1)
-> Nothing works until these are done. Build together or split and sync immediately.
+## Phase 1 — Foundation ✅ COMPLETE
 
-- [ ] Set up Spring Boot project structure
-- [ ] Configure database (H2 in-memory for POC)
-- [ ] Implement DB schema (`users`, `accounts`, `transactions`)
-- [ ] `POST /auth/register` — Customer registration (first name, last name, email, BSN, phone)
-- [ ] `POST /auth/login` — Login with email + password, returns JWT
-- [ ] JWT filter + Spring Security config (role-based: `CUSTOMER`, `EMPLOYEE`)
-- [ ] CORS configuration so frontend can reach backend
-- [ ] Seed one employee account in DB (no registration flow for employees)
-- [ ] Configure Swagger / OpenAPI documentation
+- [x] Set up Spring Boot project structure
+- [x] Configure database (H2 in-memory for POC)
+- [x] Implement DB schema (`users`, `accounts`, `transactions`)
+- [x] `POST /auth/register` — Customer registration (first name, last name, email, BSN, phone)
+- [x] `POST /auth/login` — Login with email + password, returns JWT
+- [x] JWT filter + Spring Security config (role-based: `CUSTOMER`, `EMPLOYEE`)
+- [x] CORS configuration so frontend can reach backend
+- [x] Seed one employee account in DB (no registration flow for employees)
+- [x] Configure Swagger / OpenAPI documentation
 
 ---
 
 ## Phase 2 — Employee Core (Backend leads, Frontend unblocked after)
 > Employee features must exist before any customer account-dependent feature works.
 
-### Backend
-- [ ] `GET /employees/customers/pending` — List customers without accounts ⚠️ *Phase 1*
-- [ ] `POST /employees/customers/{id}/approve` — Approve customer, create checking + savings accounts with IBAN (NLxxINHO0xxxxxxxxx), set absolute limit + daily limit ⚠️ *Phase 1*
-- [ ] `GET /employees/accounts` — Paginated list of all customer accounts
-- [ ] `PUT /employees/accounts/{iban}/limits` — Update absolute and daily transfer limits
-- [ ] `DELETE /employees/accounts/{iban}` — Close a customer account
+### Backend ✅ COMPLETE
+- [x] `GET /employees/customers/pending` — List customers without accounts ⚠️ *Phase 1*
+- [x] `POST /employees/customers/{id}/approve` — Approve customer, create checking + savings accounts with IBAN (NLxxINHO0xxxxxxxxx), set absolute limit + daily limit ⚠️ *Phase 1*
+- [x] `GET /employees/accounts` — Paginated list of all customer accounts
+- [x] `PUT /employees/accounts/{iban}/limits` — Update absolute and daily transfer limits
+- [x] `DELETE /employees/accounts/{iban}` — Close a customer account
 
 ### Frontend
 - [ ] Login page (shared with customer) ⚠️ *Phase 1 auth*
