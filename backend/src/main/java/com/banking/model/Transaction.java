@@ -1,11 +1,18 @@
 package com.banking.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "transactions")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Transaction {
 
     @Id
@@ -21,7 +28,7 @@ public class Transaction {
 
     private LocalDateTime timestamp;
 
-    private String performedBy; // email of user who initiated the transaction
+    private String performedBy;
 
     private String description;
 
@@ -34,10 +41,8 @@ public class Transaction {
         WITHDRAWAL
     }
 
-    // Constructors
-    public Transaction() {}
-
-    public Transaction(String fromIban, String toIban, BigDecimal amount, String performedBy, String description, TransactionType transactionType) {
+    public Transaction(String fromIban, String toIban, BigDecimal amount,
+                       String performedBy, String description, TransactionType transactionType) {
         this.fromIban = fromIban;
         this.toIban = toIban;
         this.amount = amount;
@@ -46,29 +51,4 @@ public class Transaction {
         this.transactionType = transactionType;
         this.timestamp = LocalDateTime.now();
     }
-
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public String getFromIban() { return fromIban; }
-    public void setFromIban(String fromIban) { this.fromIban = fromIban; }
-
-    public String getToIban() { return toIban; }
-    public void setToIban(String toIban) { this.toIban = toIban; }
-
-    public BigDecimal getAmount() { return amount; }
-    public void setAmount(BigDecimal amount) { this.amount = amount; }
-
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
-
-    public String getPerformedBy() { return performedBy; }
-    public void setPerformedBy(String performedBy) { this.performedBy = performedBy; }
-
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-
-    public TransactionType getTransactionType() { return transactionType; }
-    public void setTransactionType(TransactionType transactionType) { this.transactionType = transactionType; }
 }
