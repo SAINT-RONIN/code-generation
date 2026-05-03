@@ -33,7 +33,7 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String extractEmail(String token) {
+    public String extractEmailFromToken(String token) {
         return parseClaims(token).getSubject();
     }
 

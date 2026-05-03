@@ -40,7 +40,7 @@ public class TransactionServiceImpl implements TransactionService {
         verifyTransferRules(from, to);
         deductWithLimitChecks(from, request.amount());
         to.setBalance(to.getBalance().add(request.amount()));
-        return record(request.fromIban(), request.toIban(), request.amount(), callerEmail, request.description(), TransactionType.TRANSFER);
+        return saveTransaction(request.fromIban(), request.toIban(), request.amount(), callerEmail, request.description(), TransactionType.TRANSFER);
     }
 
     @Override
@@ -50,7 +50,7 @@ public class TransactionServiceImpl implements TransactionService {
         verifyBothAreCheckingAccounts(from, to);
         deductWithLimitChecks(from, request.amount());
         to.setBalance(to.getBalance().add(request.amount()));
-        return record(request.fromIban(), request.toIban(), request.amount(), employeeEmail, request.description(), TransactionType.TRANSFER);
+        return saveTransaction(request.fromIban(), request.toIban(), request.amount(), employeeEmail, request.description(), TransactionType.TRANSFER);
     }
 
     @Override
@@ -58,7 +58,7 @@ public class TransactionServiceImpl implements TransactionService {
         Account account = findActiveAccountOrThrow(request.iban());
         verifyCallerOwnsAccount(account, callerEmail);
         account.setBalance(account.getBalance().add(request.amount()));
-        return record(null, request.iban(), request.amount(), callerEmail, request.description(), TransactionType.DEPOSIT);
+        return saveTransaction(null, request.iban(), request.amount(), callerEmail, request.description(), TransactionType.DEPOSIT);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class TransactionServiceImpl implements TransactionService {
         Account account = findActiveAccountOrThrow(request.iban());
         verifyCallerOwnsAccount(account, callerEmail);
         deductWithLimitChecks(account, request.amount());
-        return record(request.iban(), null, request.amount(), callerEmail, request.description(), TransactionType.WITHDRAWAL);
+        return saveTransaction(request.iban(), null, request.amount(), callerEmail, request.description(), TransactionType.WITHDRAWAL);
     }
 
     @Override
@@ -75,14 +75,14 @@ public class TransactionServiceImpl implements TransactionService {
         verifyCallerOwnsIban(iban, callerEmail);
         Specification<Transaction> spec = TransactionSpecification.involvesIban(iban)
                 .and(TransactionSpecification.matchesFilter(filter));
-        return transactionRepository.findAll(spec, pageable).map(this::toResponse);
+        return transactionRepository.findAll(spec, pageable).map(this::toTransactionResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<TransactionResponse> findAllTransactions(TransactionFilter filter, Pageable pageable) {
         return transactionRepository.findAll(TransactionSpecification.matchesFilter(filter), pageable)
-                .map(this::toResponse);
+                .map(this::toTransactionResponse);
     }
 
     private void deductWithLimitChecks(Account account, BigDecimal amount) {
@@ -128,8 +128,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     private void verifyCallerOwnsIban(String iban, String callerEmail) {
-        Account account = findActiveAccountOrThrow(iban);
-        verifyCallerOwnsAccount(account, callerEmail);
+        verifyCallerOwnsAccount(findActiveAccountOrThrow(iban), callerEmail);
     }
 
     private Account findActiveAccountOrThrow(String iban) {
@@ -141,14 +140,17 @@ public class TransactionServiceImpl implements TransactionService {
         return account;
     }
 
-    private TransactionResponse record(String fromIban, String toIban, BigDecimal amount,
-                                       String performedBy, String description, TransactionType type) {
-        Transaction tx = transactionRepository.save(new Transaction(fromIban, toIban, amount, performedBy, description, type));
-        return toResponse(tx);
+    private TransactionResponse saveTransaction(String fromIban, String toIban, BigDecimal amount,
+                                                String performedBy, String description, TransactionType type) {
+        Transaction transaction = transactionRepository.save(
+                new Transaction(fromIban, toIban, amount, performedBy, description, type));
+        return toTransactionResponse(transaction);
     }
 
-    private TransactionResponse toResponse(Transaction tx) {
-        return new TransactionResponse(tx.getId(), tx.getFromIban(), tx.getToIban(), tx.getAmount(),
-                tx.getTimestamp(), tx.getPerformedBy(), tx.getDescription(), tx.getTransactionType().name());
+    private TransactionResponse toTransactionResponse(Transaction transaction) {
+        return new TransactionResponse(
+                transaction.getId(), transaction.getFromIban(), transaction.getToIban(),
+                transaction.getAmount(), transaction.getTimestamp(), transaction.getPerformedBy(),
+                transaction.getDescription(), transaction.getTransactionType().name());
     }
 }

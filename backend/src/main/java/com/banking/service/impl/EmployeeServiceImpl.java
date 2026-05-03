@@ -32,7 +32,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public List<PendingCustomerResponse> findPendingCustomers() {
         return userRepository.findAllPendingCustomers().stream()
-                .map(this::toPendingCustomerResponse)
+                .map(this::mapUserToPendingCustomerResponse)
                 .toList();
     }
 
@@ -50,7 +50,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public Page<AccountResponse> findAllCustomerAccounts(Pageable pageable) {
         return accountRepository.findAllByUserRole(User.Role.CUSTOMER, pageable)
-                .map(this::toAccountResponse);
+                .map(this::mapAccountToAccountResponse);
     }
 
     @Override
@@ -69,11 +69,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     private Account buildAccount(AccountType type, ApproveCustomerRequest request, User customer) {
-        String iban = generateUniqueIban();
-        return new Account(iban, type, request.absoluteLimit(), request.dailyLimit(), customer);
+        return new Account(createUniqueIban(), type, request.absoluteLimit(), request.dailyLimit(), customer);
     }
 
-    private String generateUniqueIban() {
+    private String createUniqueIban() {
         String iban;
         do {
             iban = IbanGenerator.generate();
@@ -95,14 +94,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElseThrow(() -> new AccountNotFoundException(iban));
     }
 
-    private PendingCustomerResponse toPendingCustomerResponse(User user) {
+    private PendingCustomerResponse mapUserToPendingCustomerResponse(User user) {
         return new PendingCustomerResponse(
                 user.getId(), user.getFirstName(), user.getLastName(),
                 user.getEmail(), user.getBsn(), user.getPhoneNumber()
         );
     }
 
-    private AccountResponse toAccountResponse(Account account) {
+    private AccountResponse mapAccountToAccountResponse(Account account) {
         User owner = account.getUser();
         return new AccountResponse(
                 account.getId(), account.getIban(), account.getAccountType().name(),
