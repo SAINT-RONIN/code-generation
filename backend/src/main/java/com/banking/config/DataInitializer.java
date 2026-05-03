@@ -6,6 +6,7 @@ import com.banking.model.User;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
 import com.banking.util.IbanGenerator;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,18 @@ public class DataInitializer implements CommandLineRunner {
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${seed.employee.email}")
+    private String employeeEmail;
+
+    @Value("${seed.employee.password}")
+    private String employeePassword;
+
+    @Value("${seed.customer.email}")
+    private String customerEmail;
+
+    @Value("${seed.customer.password}")
+    private String customerPassword;
+
     public DataInitializer(UserRepository userRepository, AccountRepository accountRepository,
                             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
@@ -28,15 +41,15 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (!userRepository.existsByEmail("employee@bank.com")) seedEmployee();
-        if (!userRepository.existsByEmail("customer@test.com")) seedTestCustomer();
+        if (!userRepository.existsByEmail(employeeEmail)) seedEmployee();
+        if (!userRepository.existsByEmail(customerEmail)) seedTestCustomer();
     }
 
     private void seedEmployee() {
         userRepository.save(new User(
                 "Bank", "Employee",
-                "employee@bank.com",
-                passwordEncoder.encode("employee123"),
+                employeeEmail,
+                passwordEncoder.encode(employeePassword),
                 "000000000", "0600000000",
                 User.Role.EMPLOYEE
         ));
@@ -45,8 +58,8 @@ public class DataInitializer implements CommandLineRunner {
     private void seedTestCustomer() {
         User customer = userRepository.save(new User(
                 "Test", "Customer",
-                "customer@test.com",
-                passwordEncoder.encode("customer123"),
+                customerEmail,
+                passwordEncoder.encode(customerPassword),
                 "123456789", "0612345678",
                 User.Role.CUSTOMER
         ));
