@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+* { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+
+body { background: #0A0A0F; color: #fff; }
+
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin-slow 4s linear infinite; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+
+@keyframes blob1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(60px, -40px) scale(1.1); }
+  66%       { transform: translate(-40px, 30px) scale(0.95); }
+}
+@keyframes blob2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(-70px, 50px) scale(1.08); }
+  66%       { transform: translate(50px, -60px) scale(0.92); }
+}
+@keyframes blob3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(40px, 70px) scale(1.12); }
+  66%       { transform: translate(-50px, -30px) scale(0.96); }
+}
+@keyframes blob4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(-60px, -50px) scale(1.15); }
+}
+@keyframes blob5 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(80px, 40px) scale(0.9); }
+}
+@keyframes blob6 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(-30px, 60px) scale(1.1); }
+  80%       { transform: translate(50px, -20px) scale(0.95); }
+}
+.blob-1 { animation: blob1 14s ease-in-out infinite; }
+.blob-2 { animation: blob2 18s ease-in-out infinite; }
+.blob-3 { animation: blob3 12s ease-in-out infinite; }
+.blob-4 { animation: blob4 20s ease-in-out infinite; }
+.blob-5 { animation: blob5 16s ease-in-out infinite; }
+.blob-6 { animation: blob6 22s ease-in-out infinite; }
+
+@keyframes shimmer {
+  from { background-position: -200px 0; }
+  to { background-position: calc(200px + 100%) 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1C1C24 25%, #252530 50%, #1C1C24 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
