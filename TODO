@@ -62,37 +62,37 @@
 // AC: Standard registration handling is in place (validation, error message for already used email addresses, etc.)
 // AC: After registration, the customer can log-in but can only see a basic welcome page before employee account approval.
 
-// TODO As a customer, I can transfer funds between my own accounts.
+// ✅ DONE As a customer, I can transfer funds between my own accounts.
 // AC: After logging in, the customer is able to make transfers between their own checking/savings accounts.
 
-// TODO As a customer, I can find the IBAN for another customer based on their name.
+// ✅ DONE As a customer, I can find the IBAN for another customer based on their name.
 // AC: Customers must be able to search for customers' IBANs using first and list name.
 
-// TODO As a customer, I can transfer funds to other customers' accounts.
+// ✅ DONE As a customer, I can transfer funds to other customers' accounts.
 // AC: Customers are allowed to transfer funds from their checking account to other users checking accounts.
 // AC: Transaction limits specified by employee are enforced.
 
 // TODO As a customer, I can view account details.
 // AC: Customer is able to view their own account details including account totals (both individual and combined), IBAN numbers, customer information.
 
-// TODO As a customer, I can view my transaction history.
+// ✅ DONE As a customer, I can view my transaction history.
 // AC: Customer is able to view a paginated history of transfers, deposits and withdrawals to/from each of their accounts.
 
-// TODO As a customer, I can log-in to an ATM
+// ✅ DONE As a customer, I can log-in to an ATM
 // AC: Customer is able to log-in to a mock ATM.
 // AC: Mock ATM provides a simple interfact to deposit and withdraw money to/from customer's account.
 // AC: Customer supplies email and authenticates using password.
 
-// TODO As a customer, I can withdraw money from the ATM
+// ✅ DONE As a customer, I can withdraw money from the ATM
 // AC: The customer's account balance is updated.
 // AC: The absolute and daily transfer limits are enforced.
 
-// TODO As a customer, I can deposit money into the ATM
+// ✅ DONE As a customer, I can deposit money into the ATM
 // AC: The transaction is recorded.
 // AC: The customer's account balance is updated.
 // AC: The absolute and daily transfer limits are enforced.
 
-// TODO As a customer, I can search and filter transactions.
+// ✅ DONE As a customer, I can search and filter transactions.
 // AC: Customer is able to filter transactions based on start/end date range.
 // AC: Customer can filter transactions less than, greater than, equal to a specific amount.
 // AC: Customer can view transactions to/from a specific IBAN.
@@ -109,7 +109,7 @@
 // TODO As an employee, I can view a list of each individual customer's, transactions.
 // AC: Employee can view a paginated history of transactions for an individual customer in a detail view.
 
-// TODO As an employee, I can transfer funds between customers accounts.
+// ✅ DONE As an employee, I can transfer funds between customers accounts.
 // AC: Employee can transfer funds from one customer's checking account to another customer's checking account.
 // AC: Transfer limits are enforced.
 
@@ -130,7 +130,7 @@
 // AC: During account creation and after, the employ must set and can update, the customer's daily transfer limit.
 // AC: While making transactions, the customer is never allowed to transfer more than the daily limit.
 
-// TODO As an employee, I can view a list of all transactions.
+// ✅ DONE As an employee, I can view a list of all transactions.
 // AC: All transactions within the system are recorded and viewable by employee (ATM, employee initated transfers, customer initiated transfers).
 // AC: Transaction data must include: to account, from account, transfer amount, timestamp, user initiating transfer (may be customer or employee)
 // AC: Transaction results are paginated.

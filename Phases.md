@@ -45,18 +45,18 @@
 ## Phase 3 — Transactions (Backend leads, Frontend follows)
 > Depends on approved customers with accounts existing from Phase 2.
 
-### Backend
-- [ ] `POST /transactions` — Transfer between own accounts (checking ↔ savings) ⚠️ *Phase 2 approval*
-- [ ] `POST /transactions` — Transfer to another customer's checking account ⚠️ *Phase 2 approval*
-- [ ] `POST /transactions/atm/deposit` — ATM deposit (`from_iban` = NULL) ⚠️ *Phase 2 approval*
-- [ ] `POST /transactions/atm/withdraw` — ATM withdrawal (`to_iban` = NULL) ⚠️ *Phase 2 approval*
-- [ ] Enforce absolute limit on every transaction
-- [ ] Enforce daily limit on every transaction (sum today's outgoing per IBAN)
-- [ ] `GET /transactions` — Employee: all transactions, paginated
-- [ ] `GET /transactions/{iban}` — Customer: own transaction history, paginated
-- [ ] `GET /transactions/{iban}?filters` — Filter by date range, amount (lt/gt/eq), IBAN
-- [ ] `POST /employees/transactions` — Employee-initiated transfer between customers
-- [ ] `GET /accounts/search?firstName=&lastName=` — Find customer IBAN by name
+### Backend ✅ COMPLETE
+- [x] `POST /transactions` — Transfer between own accounts (checking ↔ savings) ⚠️ *Phase 2 approval*
+- [x] `POST /transactions` — Transfer to another customer's checking account ⚠️ *Phase 2 approval*
+- [x] `POST /transactions/atm/deposit` — ATM deposit (`from_iban` = NULL) ⚠️ *Phase 2 approval*
+- [x] `POST /transactions/atm/withdraw` — ATM withdrawal (`to_iban` = NULL) ⚠️ *Phase 2 approval*
+- [x] Enforce absolute limit on every transaction
+- [x] Enforce daily limit on every transaction (sum today's outgoing per IBAN)
+- [x] `GET /transactions` — Employee: all transactions, paginated
+- [x] `GET /transactions/{iban}` — Customer: own transaction history, paginated
+- [x] `GET /transactions/{iban}?filters` — Filter by date range, amount (lt/gt/eq), IBAN
+- [x] `POST /employees/transactions` — Employee-initiated transfer between customers
+- [x] `GET /accounts/search?firstName=&lastName=` — Find customer IBAN by name
 
 ### Frontend
 - [ ] Customer — account details view (balance, IBANs, customer info) ⚠️ *Phase 2 approval*

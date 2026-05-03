@@ -2,10 +2,14 @@ package com.banking.controller;
 
 import com.banking.dto.*;
 import com.banking.service.interfaces.EmployeeService;
+import com.banking.service.interfaces.TransactionService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,9 +19,11 @@ import java.util.List;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final TransactionService transactionService;
 
-    public EmployeeController(EmployeeService employeeService) {
+    public EmployeeController(EmployeeService employeeService, TransactionService transactionService) {
         this.employeeService = employeeService;
+        this.transactionService = transactionService;
     }
 
     @GetMapping("/customers/pending")
@@ -48,5 +54,11 @@ public class EmployeeController {
     public ResponseEntity<Void> closeAccount(@PathVariable String iban) {
         employeeService.closeAccount(iban);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/transactions")
+    public ResponseEntity<TransactionResponse> transferBetweenCustomers(@Valid @RequestBody TransferRequest request,
+                                                                         @AuthenticationPrincipal UserDetails employee) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.employeeTransfer(request, employee.getUsername()));
     }
 }
