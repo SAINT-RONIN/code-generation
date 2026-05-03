@@ -1,9 +1,11 @@
 package com.banking.service.impl;
 
+import com.banking.dto.AccountResponse;
 import com.banking.dto.IbanSearchResponse;
 import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
 import com.banking.model.User;
+import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
 import com.banking.service.interfaces.AccountService;
 import org.springframework.stereotype.Service;
@@ -14,9 +16,11 @@ import java.util.List;
 public class AccountServiceImpl implements AccountService {
 
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
 
-    public AccountServiceImpl(UserRepository userRepository) {
+    public AccountServiceImpl(UserRepository userRepository, AccountRepository accountRepository) {
         this.userRepository = userRepository;
+        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -27,6 +31,13 @@ public class AccountServiceImpl implements AccountService {
                 .toList();
     }
 
+    @Override
+    public List<AccountResponse> findMyAccounts(String email) {
+        return accountRepository.findAllByUserEmail(email).stream()
+                .map(this::mapToAccountResponse)
+                .toList();
+    }
+
     private IbanSearchResponse mapUserToIbanSearchResponse(User customer) {
         String checkingIban = customer.getAccounts().stream()
                 .filter(account -> account.getAccountType() == AccountType.CHECKING)
@@ -34,5 +45,14 @@ public class AccountServiceImpl implements AccountService {
                 .findFirst()
                 .orElse(null);
         return new IbanSearchResponse(customer.getFirstName(), customer.getLastName(), checkingIban);
+    }
+
+    private AccountResponse mapToAccountResponse(Account account) {
+        User owner = account.getUser();
+        return new AccountResponse(
+                account.getId(), account.getIban(), account.getAccountType().name(),
+                account.getBalance(), account.getAbsoluteLimit(), account.getDailyLimit(),
+                account.isActive(), owner.getFirstName() + " " + owner.getLastName(), owner.getEmail()
+        );
     }
 }

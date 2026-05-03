@@ -10,6 +10,7 @@ import com.banking.model.User;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
 import com.banking.service.interfaces.EmployeeService;
+import com.banking.service.interfaces.TransactionService;
 import com.banking.util.IbanGenerator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,10 +24,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+    private final TransactionService transactionService;
 
-    public EmployeeServiceImpl(UserRepository userRepository, AccountRepository accountRepository) {
+    public EmployeeServiceImpl(UserRepository userRepository, AccountRepository accountRepository,
+                                TransactionService transactionService) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
+        this.transactionService = transactionService;
     }
 
     @Override
@@ -66,6 +70,11 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void closeAccount(String iban) {
         Account account = findAccountOrThrow(iban);
         account.setActive(false);
+    }
+
+    @Override
+    public TransactionResponse transferBetweenCustomers(TransferRequest request, String employeeEmail) {
+        return transactionService.employeeTransfer(request, employeeEmail);
     }
 
     private Account buildAccount(AccountType type, ApproveCustomerRequest request, User customer) {

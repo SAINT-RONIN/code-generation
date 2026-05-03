@@ -2,7 +2,6 @@ package com.banking.controller;
 
 import com.banking.dto.*;
 import com.banking.service.interfaces.EmployeeService;
-import com.banking.service.interfaces.TransactionService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,11 +18,9 @@ import java.util.List;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
-    private final TransactionService transactionService;
 
-    public EmployeeController(EmployeeService employeeService, TransactionService transactionService) {
+    public EmployeeController(EmployeeService employeeService) {
         this.employeeService = employeeService;
-        this.transactionService = transactionService;
     }
 
     @GetMapping("/customers/pending")
@@ -59,6 +56,6 @@ public class EmployeeController {
     @PostMapping("/transactions")
     public ResponseEntity<TransactionResponse> transferBetweenCustomers(@Valid @RequestBody TransferRequest request,
                                                                          @AuthenticationPrincipal UserDetails employee) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.employeeTransfer(request, employee.getUsername()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.transferBetweenCustomers(request, employee.getUsername()));
     }
 }

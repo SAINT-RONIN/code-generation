@@ -12,4 +12,5 @@ public interface EmployeeService {
     Page<AccountResponse> findAllCustomerAccounts(Pageable pageable);
     void updateAccountLimits(String iban, UpdateLimitsRequest request);
     void closeAccount(String iban);
+    TransactionResponse transferBetweenCustomers(TransferRequest request, String employeeEmail);
 }
