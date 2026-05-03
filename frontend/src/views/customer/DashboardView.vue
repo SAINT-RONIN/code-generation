@@ -12,12 +12,8 @@ const loading = ref(true)
 const totalBalance = computed(() => accounts.value.reduce((s, a) => s + parseFloat(a.balance), 0))
 const checkingAccount = computed(() => accounts.value.find(a => a.accountType === 'CHECKING'))
 
-function eur(val) {
-  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(val)
-}
-function shortDate(ts) {
-  return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-}
+function eur(val) { return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(val) }
+function shortDate(ts) { return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }
 
 onMounted(async () => {
   try {
@@ -33,10 +29,10 @@ onMounted(async () => {
 })
 
 const quickActions = [
-  { icon: ArrowLeftRight, label: 'Transfer', path: '/customer/transfer', accent: 'bg-[#7B61FF] shadow-[#7B61FF]/30' },
-  { icon: History, label: 'History', path: '/customer/transactions', accent: 'bg-[#1C1C2E]' },
-  { icon: Search, label: 'Find IBAN', path: '/customer/find', accent: 'bg-[#1C1C2E]' },
-  { icon: Wallet, label: 'ATM', path: '/atm', accent: 'bg-[#1C1C2E]' },
+  { icon: ArrowLeftRight, label: 'Transfer', path: '/customer/transfer', bg: 'linear-gradient(135deg, #7B61FF, #5C45CC)', shadow: 'rgba(123,97,255,0.4)' },
+  { icon: History, label: 'History', path: '/customer/transactions', bg: 'rgba(255,255,255,0.06)', shadow: 'transparent' },
+  { icon: Search, label: 'Find IBAN', path: '/customer/find', bg: 'rgba(255,255,255,0.06)', shadow: 'transparent' },
+  { icon: Wallet, label: 'ATM', path: '/atm', bg: 'rgba(255,255,255,0.06)', shadow: 'transparent' },
 ]
 </script>
 
@@ -44,71 +40,83 @@ const quickActions = [
   <CustomerLayout>
     <!-- Skeleton -->
     <div v-if="loading" class="space-y-6 mt-2">
-      <div class="skeleton h-24 w-64 rounded-2xl"></div>
-      <div class="flex gap-4"><div v-for="i in 2" :key="i" class="skeleton h-44 w-72 rounded-2xl flex-shrink-0"></div></div>
-      <div class="skeleton h-40 rounded-2xl"></div>
+      <div class="skeleton h-28 w-72 rounded-2xl"></div>
+      <div class="flex gap-4">
+        <div v-for="i in 2" :key="i" class="skeleton h-48 w-72 rounded-2xl flex-shrink-0"></div>
+      </div>
+      <div class="skeleton h-44 rounded-2xl"></div>
     </div>
 
     <template v-else>
       <!-- Hero balance -->
-      <div class="mt-2 mb-8">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Total Balance</p>
-        <h1 class="text-5xl md:text-6xl font-bold tracking-tight tabular-nums text-white leading-none mb-3">
+      <div class="mt-2 mb-10 animate-fade-up">
+        <p class="text-xs font-semibold text-gray-600 uppercase tracking-widest mb-3">Total Balance</p>
+        <h1 class="text-5xl md:text-6xl font-bold tracking-tight tabular-nums leading-none mb-4 gradient-text">
           {{ eur(totalBalance) }}
         </h1>
-        <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00D9A3]/10 border border-[#00D9A3]/20 text-[#00D9A3] text-xs font-semibold">
-          <TrendingUp class="w-3.5 h-3.5" />
-          {{ accounts.length }} active account{{ accounts.length !== 1 ? 's' : '' }}
+        <div class="flex items-center gap-3">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold" style="background: rgba(0,217,163,0.1); border: 1px solid rgba(0,217,163,0.2); color: #00D9A3;">
+            <TrendingUp class="w-3.5 h-3.5" />
+            {{ accounts.length }} active account{{ accounts.length !== 1 ? 's' : '' }}
+          </div>
+          <div class="w-1.5 h-1.5 rounded-full bg-[#00D9A3] animate-pulse"></div>
         </div>
       </div>
 
       <!-- Account cards -->
-      <div class="flex gap-4 mb-8 overflow-x-auto hide-scrollbar -mx-5 px-5 md:mx-0 md:px-0 pb-2">
+      <div class="flex gap-4 mb-10 overflow-x-auto hide-scrollbar -mx-5 px-5 md:mx-0 md:px-0 pb-2 animate-fade-up-1">
         <div
           v-for="account in accounts"
           :key="account.id"
-          class="flex-none w-72 h-44 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden cursor-pointer hover:-translate-y-1 transition-all duration-300 shadow-2xl select-none"
-          :class="account.accountType === 'CHECKING'
-            ? 'bg-gradient-to-br from-[#3D2B8A] via-[#2A1B69] to-[#14103A] shadow-[#3D2B8A]/30'
-            : 'bg-gradient-to-br from-[#1E2A20] via-[#16201A] to-[#0C1410] shadow-black/50'"
+          class="flex-none w-72 h-48 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden cursor-pointer hover:-translate-y-1.5 transition-all duration-300 card-shine select-none"
+          :style="account.accountType === 'CHECKING'
+            ? 'background: linear-gradient(135deg, #2D1F6B 0%, #1C1347 50%, #0F0B2E 100%); box-shadow: 0 20px 60px rgba(123,97,255,0.25), 0 0 0 1px rgba(123,97,255,0.2);'
+            : 'background: linear-gradient(135deg, #0F2A20 0%, #0A1D16 50%, #060F0C 100%); box-shadow: 0 20px 60px rgba(0,217,163,0.15), 0 0 0 1px rgba(0,217,163,0.15);'"
         >
-          <!-- Decorative circles -->
-          <div class="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20" :class="account.accountType === 'CHECKING' ? 'bg-[#7B61FF]' : 'bg-[#00D9A3]'"></div>
-          <div class="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-10" :class="account.accountType === 'CHECKING' ? 'bg-[#5C45CC]' : 'bg-[#00A880]'"></div>
+          <!-- Glow orb -->
+          <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-2xl opacity-30"
+            :style="account.accountType === 'CHECKING' ? 'background: #7B61FF' : 'background: #00D9A3'"></div>
+          <div class="absolute -bottom-8 -left-8 w-28 h-28 rounded-full blur-2xl opacity-20"
+            :style="account.accountType === 'CHECKING' ? 'background: #5C45CC' : 'background: #00A880'"></div>
 
-          <div class="relative">
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-xs font-semibold uppercase tracking-wider opacity-60 text-white">{{ account.accountType.toLowerCase() }}</span>
-              <div class="w-6 h-6 rounded-full opacity-40 flex items-center justify-center" :class="account.accountType === 'CHECKING' ? 'bg-[#7B61FF]' : 'bg-[#00D9A3]'">
-                <div class="w-2.5 h-2.5 rounded-full bg-white"></div>
-              </div>
+          <!-- Card chip -->
+          <div class="relative flex items-center justify-between">
+            <div class="flex gap-0.5">
+              <div class="w-5 h-4 rounded-sm opacity-60" :style="account.accountType === 'CHECKING' ? 'background: #7B61FF' : 'background: #00D9A3'"></div>
+              <div class="w-5 h-4 rounded-sm opacity-30" :style="account.accountType === 'CHECKING' ? 'background: #a89bff' : 'background: #80ffe8'"></div>
             </div>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-white/40">{{ account.accountType }}</span>
+          </div>
+
+          <!-- Balance -->
+          <div class="relative">
             <p class="text-2xl font-bold tabular-nums text-white leading-tight">{{ eur(account.balance) }}</p>
           </div>
 
-          <div class="relative space-y-1">
-            <p class="font-mono text-xs tracking-widest text-white/40 leading-none">
+          <!-- IBAN + limits -->
+          <div class="relative space-y-1.5">
+            <p class="font-mono text-xs tracking-widest text-white/35">
               {{ account.iban.slice(0, 4) }} {{ account.iban.slice(4, 8) }} ···· {{ account.iban.slice(-4) }}
             </p>
-            <div class="flex justify-between text-[10px] text-white/30 font-medium">
-              <span>Daily limit: {{ eur(account.dailyLimit) }}</span>
-              <span>Min: {{ eur(account.absoluteLimit) }}</span>
+            <div class="flex justify-between text-[10px] text-white/25 font-medium">
+              <span>Daily {{ eur(account.dailyLimit) }}</span>
+              <span>Min {{ eur(account.absoluteLimit) }}</span>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Quick actions -->
-      <div class="grid grid-cols-4 gap-3 mb-8">
+      <div class="grid grid-cols-4 gap-3 mb-10 animate-fade-up-2">
         <RouterLink
           v-for="action in quickActions"
           :key="action.path"
           :to="action.path"
-          class="flex flex-col items-center gap-2 group"
+          class="flex flex-col items-center gap-2.5 group"
         >
           <div
-            class="w-13 h-13 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-hover:shadow-lg shadow-md"
-            :class="action.accent"
+            class="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-110"
+            :style="`background: ${action.bg}; box-shadow: 0 8px 24px ${action.shadow};`"
           >
             <component :is="action.icon" class="w-5 h-5 text-white" />
           </div>
@@ -117,35 +125,40 @@ const quickActions = [
       </div>
 
       <!-- Recent transactions -->
-      <div>
+      <div class="animate-fade-up-3">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-base font-semibold text-white">Recent Activity</h3>
-          <RouterLink to="/customer/transactions" class="text-xs font-medium text-[#7B61FF] hover:text-[#9B81FF] flex items-center gap-0.5 transition-colors">
+          <RouterLink to="/customer/transactions" class="text-xs font-medium flex items-center gap-0.5 transition-colors" style="color: #7B61FF;">
             View all <ChevronRight class="w-3.5 h-3.5" />
           </RouterLink>
         </div>
 
-        <div class="bg-[#0D0D14] rounded-2xl border border-white/[0.05] overflow-hidden">
-          <div v-if="recentTransactions.length > 0" class="divide-y divide-white/[0.04]">
+        <div class="rounded-2xl overflow-hidden card-shine" style="background: #0D0D14; border: 1px solid rgba(255,255,255,0.05);">
+          <div v-if="recentTransactions.length > 0" class="divide-y" style="border-color: rgba(255,255,255,0.04);">
             <div
               v-for="tx in recentTransactions"
               :key="tx.id"
-              class="flex items-center gap-3.5 px-4 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer"
+              class="flex items-center gap-3.5 px-4 py-3.5 transition-colors cursor-pointer"
+              style="transition: background 0.15s;"
+              @mouseenter="$event.currentTarget.style.background='rgba(255,255,255,0.02)'"
+              @mouseleave="$event.currentTarget.style.background=''"
             >
               <div
                 class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                :class="tx.fromIban === checkingAccount?.iban ? 'bg-[#FF5E5B]/10 text-[#FF5E5B]' : 'bg-[#00D9A3]/10 text-[#00D9A3]'"
+                :style="tx.fromIban === checkingAccount?.iban
+                  ? 'background: rgba(255,94,91,0.1); color: #FF5E5B;'
+                  : 'background: rgba(0,217,163,0.1); color: #00D9A3;'"
               >
                 <ArrowUpRight v-if="tx.fromIban === checkingAccount?.iban" class="w-4 h-4" />
                 <ArrowDownLeft v-else class="w-4 h-4" />
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-white truncate">{{ tx.description || tx.type }}</p>
-                <p class="text-[11px] text-gray-600 mt-0.5">{{ tx.type }} · {{ shortDate(tx.timestamp) }}</p>
+                <p class="text-[11px] text-gray-600 mt-0.5 capitalize">{{ tx.type.toLowerCase() }} · {{ shortDate(tx.timestamp) }}</p>
               </div>
               <span
                 class="text-sm font-semibold tabular-nums"
-                :class="tx.fromIban === checkingAccount?.iban ? 'text-gray-300' : 'text-[#00D9A3]'"
+                :style="tx.fromIban === checkingAccount?.iban ? 'color: #9ca3af;' : 'color: #00D9A3;'"
               >
                 {{ tx.fromIban === checkingAccount?.iban ? '−' : '+' }}{{ eur(tx.amount) }}
               </span>

@@ -50,18 +50,18 @@ async function handleLogin() {
       ></div>
     </div>
 
-    <div class="relative z-10 w-full max-w-md">
+    <div class="relative z-10 w-full max-w-md animate-fade-up">
       <!-- Logo -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B61FF] to-[#5C45CC] mb-5 shadow-2xl shadow-[#7B61FF]/30">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 animate-pulse-glow" style="background: linear-gradient(135deg, #7B61FF, #5C45CC);">
           <span class="text-white font-bold text-2xl tracking-tighter">N</span>
         </div>
-        <h1 class="text-3xl font-bold tracking-tight text-white">Nova Bank</h1>
+        <h1 class="text-3xl font-bold tracking-tight gradient-text">Nova Bank</h1>
         <p class="text-sm text-gray-500 mt-1.5">Premium banking, reimagined.</p>
       </div>
 
       <!-- Card -->
-      <div class="bg-[#14141A]/80 backdrop-blur-xl rounded-3xl border border-white/[0.06] p-8 shadow-2xl">
+      <div class="gradient-border backdrop-blur-xl p-8 shadow-2xl" style="background: rgba(14,14,23,0.85); box-shadow: 0 25px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);">
         <h2 class="text-xl font-semibold text-white mb-6">Sign in to your account</h2>
 
         <form @submit.prevent="handleLogin" class="space-y-5">
