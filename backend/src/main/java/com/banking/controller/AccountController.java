@@ -29,8 +29,7 @@ public class AccountController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<IbanSearchResponse>> searchByName(@RequestParam String firstName,
-                                                                  @RequestParam String lastName) {
+    public ResponseEntity<List<IbanSearchResponse>> searchByName(@RequestParam String firstName, @RequestParam String lastName) {
         return ResponseEntity.ok(accountService.searchCustomerCheckingIbansByName(firstName, lastName));
     }
 }
