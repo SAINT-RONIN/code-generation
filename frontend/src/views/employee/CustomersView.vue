@@ -65,7 +65,7 @@ async function handleClose(iban) {
       <div v-for="i in 6" :key="i" class="skeleton h-16 rounded-xl"></div>
     </div>
 
-    <div v-else class="bg-[#0D0D14] rounded-2xl border border-white/[0.05] overflow-hidden">
+    <div v-else class="bg-[#14141A] rounded-2xl border border-white/[0.05] overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead>
@@ -157,9 +157,9 @@ async function handleClose(iban) {
     </div>
 
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-2 mt-5">
-      <button :disabled="page === 0" @click="page--; loadAccounts()" class="px-3 py-1.5 rounded-lg bg-[#0D0D14] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
+      <button :disabled="page === 0" @click="page--; loadAccounts()" class="px-3 py-1.5 rounded-lg bg-[#14141A] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
       <span class="text-xs text-gray-600 px-2">{{ page + 1 }} / {{ totalPages }}</span>
-      <button :disabled="page >= totalPages - 1" @click="page++; loadAccounts()" class="px-3 py-1.5 rounded-lg bg-[#0D0D14] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">Next →</button>
+      <button :disabled="page >= totalPages - 1" @click="page++; loadAccounts()" class="px-3 py-1.5 rounded-lg bg-[#14141A] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">Next →</button>
     </div>
   </EmployeeLayout>
 </template>

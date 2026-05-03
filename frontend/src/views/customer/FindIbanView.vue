@@ -38,7 +38,7 @@ function copyIban(iban) {
         <p class="text-sm text-gray-500 mt-1">Search customers by name to get their checking account IBAN.</p>
       </div>
 
-      <form @submit.prevent="search" class="bg-[#0D0D14] border border-white/[0.06] rounded-2xl p-5 mb-6">
+      <form @submit.prevent="search" class="bg-[#14141A] border border-white/[0.06] rounded-2xl p-5 mb-6">
         <div class="grid grid-cols-2 gap-3 mb-4">
           <div>
             <label class="block text-xs font-medium text-gray-500 mb-1.5">First name</label>
@@ -66,7 +66,7 @@ function copyIban(iban) {
           <div
             v-for="result in results"
             :key="result.iban"
-            class="bg-[#0D0D14] border border-[#7B61FF]/20 rounded-2xl p-5 hover:border-[#7B61FF]/40 transition-all"
+            class="bg-[#14141A] border border-[#7B61FF]/20 rounded-2xl p-5 hover:border-[#7B61FF]/40 transition-all"
           >
             <div class="flex items-center gap-3 mb-4">
               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#7B61FF] to-[#00D9A3] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">

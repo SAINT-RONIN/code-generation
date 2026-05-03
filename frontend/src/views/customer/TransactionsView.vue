@@ -52,7 +52,7 @@ function clearFilters() { filters.value = { from: '', to: '', amountGt: '', amou
 
     <!-- Account tabs + filter toggle -->
     <div class="flex items-center justify-between gap-3 mb-4">
-      <div class="flex gap-1.5 bg-[#0D0D14] border border-white/[0.05] rounded-xl p-1">
+      <div class="flex gap-1.5 bg-[#14141A] border border-white/5 rounded-xl p-1">
         <button
           v-for="a in accounts"
           :key="a.iban"
@@ -70,23 +70,23 @@ function clearFilters() { filters.value = { from: '', to: '', amountGt: '', amou
     </div>
 
     <!-- Filters panel -->
-    <div v-if="showFilters" class="bg-[#0D0D14] border border-white/[0.06] rounded-2xl p-4 mb-4">
+    <div v-if="showFilters" class="bg-[#14141A] border border-white/5 rounded-2xl p-4 mb-4">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
         <div>
           <label class="block text-[10px] text-gray-600 mb-1.5 uppercase tracking-wider">From date</label>
-          <input v-model="filters.from" type="date" class="w-full bg-[#1C1C24] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#7B61FF]/30" />
+          <input v-model="filters.from" type="date" class="w-full bg-[#1C1C24] border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#7B61FF]/30" />
         </div>
         <div>
           <label class="block text-[10px] text-gray-600 mb-1.5 uppercase tracking-wider">To date</label>
-          <input v-model="filters.to" type="date" class="w-full bg-[#1C1C24] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#7B61FF]/30" />
+          <input v-model="filters.to" type="date" class="w-full bg-[#1C1C24] border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#7B61FF]/30" />
         </div>
         <div>
           <label class="block text-[10px] text-gray-600 mb-1.5 uppercase tracking-wider">Min amount</label>
-          <input v-model="filters.amountGt" type="number" placeholder="€0" class="w-full bg-[#1C1C24] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#7B61FF]/30" />
+          <input v-model="filters.amountGt" type="number" placeholder="€0" class="w-full bg-[#1C1C24] border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#7B61FF]/30" />
         </div>
         <div>
           <label class="block text-[10px] text-gray-600 mb-1.5 uppercase tracking-wider">Max amount</label>
-          <input v-model="filters.amountLt" type="number" placeholder="€∞" class="w-full bg-[#1C1C24] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#7B61FF]/30" />
+          <input v-model="filters.amountLt" type="number" placeholder="€∞" class="w-full bg-[#1C1C24] border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#7B61FF]/30" />
         </div>
       </div>
       <div class="flex gap-2">
@@ -101,7 +101,7 @@ function clearFilters() { filters.value = { from: '', to: '', amountGt: '', amou
     </div>
 
     <!-- Transactions list -->
-    <div v-else class="bg-[#0D0D14] rounded-2xl border border-white/[0.05] overflow-hidden">
+    <div v-else class="bg-[#14141A] rounded-2xl border border-white/5 overflow-hidden">
       <div v-if="transactions.length > 0" class="divide-y divide-white/[0.04]">
         <div v-for="tx in transactions" :key="tx.id" class="flex items-center gap-3.5 px-4 py-3.5 hover:bg-white/[0.02] transition-colors">
           <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -133,9 +133,9 @@ function clearFilters() { filters.value = { from: '', to: '', amountGt: '', amou
 
     <!-- Pagination -->
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-2 mt-5">
-      <button :disabled="page === 0" @click="page--; loadTransactions()" class="px-3 py-1.5 rounded-lg bg-[#0D0D14] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
+      <button :disabled="page === 0" @click="page--; loadTransactions()" class="px-3 py-1.5 rounded-lg bg-[#14141A] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
       <span class="text-xs text-gray-600 px-2">{{ page + 1 }} / {{ totalPages }}</span>
-      <button :disabled="page >= totalPages - 1" @click="page++; loadTransactions()" class="px-3 py-1.5 rounded-lg bg-[#0D0D14] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">Next →</button>
+      <button :disabled="page >= totalPages - 1" @click="page++; loadTransactions()" class="px-3 py-1.5 rounded-lg bg-[#14141A] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">Next →</button>
     </div>
   </CustomerLayout>
 </template>

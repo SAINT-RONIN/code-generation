@@ -97,7 +97,7 @@ function reset() {
               class="flex items-center gap-3.5 p-4 rounded-xl border text-left transition-all"
               :class="fromIban === account.iban
                 ? 'border-[#7B61FF]/50 bg-[#7B61FF]/8 ring-1 ring-[#7B61FF]/20'
-                : 'border-white/[0.06] bg-[#0D0D14] hover:bg-white/[0.03]'"
+                : 'border-white/5 bg-[#14141A] hover:bg-white/[0.03]'"
             >
               <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                 :class="account.accountType === 'CHECKING' ? 'bg-[#7B61FF]/15 text-[#7B61FF]' : 'bg-[#00D9A3]/15 text-[#00D9A3]'">
@@ -131,7 +131,7 @@ function reset() {
             v-model="toIban"
             type="text"
             placeholder="NL00 INHO 0000 0000 00"
-            class="w-full bg-[#0D0D14] border border-white/[0.06] rounded-xl p-4 text-white text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-[#7B61FF]/30 focus:border-[#7B61FF]/40 placeholder:text-gray-700 transition-all uppercase"
+            class="w-full bg-[#14141A] border border-white/5 rounded-xl p-4 text-white text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-[#7B61FF]/30 focus:border-[#7B61FF]/40 placeholder:text-gray-700 transition-all uppercase"
             @input="toIban = toIban.toUpperCase()"
           />
         </div>
@@ -139,7 +139,7 @@ function reset() {
         <!-- Amount -->
         <div>
           <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Amount</p>
-          <div class="relative bg-[#0D0D14] border border-white/[0.06] rounded-xl focus-within:ring-2 focus-within:ring-[#7B61FF]/30 focus-within:border-[#7B61FF]/40 transition-all">
+          <div class="relative bg-[#14141A] border border-white/5 rounded-xl focus-within:ring-2 focus-within:ring-[#7B61FF]/30 focus-within:border-[#7B61FF]/40 transition-all">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-600">€</span>
             <input
               v-model="amount"
@@ -162,7 +162,7 @@ function reset() {
             v-model="description"
             type="text"
             placeholder="What's this for?"
-            class="w-full bg-[#0D0D14] border border-white/[0.06] rounded-xl p-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7B61FF]/30 focus:border-[#7B61FF]/40 placeholder:text-gray-700 transition-all"
+            class="w-full bg-[#14141A] border border-white/5 rounded-xl p-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7B61FF]/30 focus:border-[#7B61FF]/40 placeholder:text-gray-700 transition-all"
           />
         </div>
 
@@ -176,7 +176,7 @@ function reset() {
 
       <!-- Step 2: Review -->
       <div v-if="step === 2" class="space-y-5">
-        <div class="bg-[#0D0D14] border border-white/[0.06] rounded-2xl overflow-hidden">
+        <div class="bg-[#14141A] border border-white/5 rounded-2xl overflow-hidden">
           <div class="px-5 py-4 border-b border-white/[0.05]">
             <p class="text-sm font-semibold text-white">Review your transfer</p>
           </div>

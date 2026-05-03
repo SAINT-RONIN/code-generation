@@ -25,108 +25,89 @@ function logout() {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden" style="background:#08080D; color:#fff;">
+  <div class="flex h-screen bg-[#0A0A0F] text-white">
 
-    <!-- Skip to main content (keyboard) -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- ── Desktop Sidebar ── -->
+    <!-- Desktop Sidebar -->
     <aside
-      class="hidden md:flex w-60 flex-col flex-shrink-0"
-      style="background:#0E0E16; border-right:1px solid rgba(255,255,255,0.06);"
+      class="hidden md:flex w-64 bg-[#14141A] border-r border-white/5 flex-col flex-shrink-0"
+      role="complementary"
       aria-label="Main navigation"
     >
-      <!-- Logo -->
-      <div class="flex items-center gap-3 px-5 h-16" style="border-bottom:1px solid rgba(255,255,255,0.06);">
-        <div
-          class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-          style="background:linear-gradient(135deg,#7B61FF,#5C45CC);"
-          aria-hidden="true"
-        >
-          <span class="text-white font-bold text-sm">N</span>
+      <div class="p-6 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B61FF] to-[#5C45CC] flex items-center justify-center flex-shrink-0" aria-hidden="true">
+          <span class="text-white font-bold text-sm">NL</span>
         </div>
-        <span class="font-semibold text-[15px] text-white tracking-tight">Nova Bank</span>
+        <span class="font-bold text-lg tracking-tight text-white">Nova Bank</span>
       </div>
 
-      <!-- Nav -->
-      <nav class="flex-1 px-3 py-4 space-y-0.5" role="navigation" aria-label="Customer menu">
+      <nav class="flex-1 px-4 py-2 space-y-1" role="navigation" aria-label="Customer menu">
         <RouterLink
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm"
           :class="isActive(item.path)
-            ? 'text-white'
-            : 'text-[#6B6B7E] hover:text-white hover:bg-white/[0.04]'"
-          :style="isActive(item.path) ? 'background:rgba(123,97,255,0.12);' : ''"
+            ? 'bg-[#7B61FF]/10 text-[#7B61FF]'
+            : 'text-gray-400 hover:text-white hover:bg-white/5'"
           :aria-current="isActive(item.path) ? 'page' : undefined"
         >
-          <component
-            :is="item.icon"
-            class="w-4 h-4 flex-shrink-0"
-            :style="isActive(item.path) ? 'color:#7B61FF' : ''"
-            aria-hidden="true"
-          />
+          <component :is="item.icon" class="w-5 h-5 flex-shrink-0" aria-hidden="true" />
           {{ item.label }}
         </RouterLink>
       </nav>
 
-      <!-- Footer -->
-      <div class="px-3 pb-4 space-y-0.5" style="border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;">
+      <div class="p-4 border-t border-white/5 space-y-1">
         <RouterLink
           to="/atm"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#6B6B7E] hover:text-white hover:bg-white/[0.04] transition-colors"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
+          :class="route.path.startsWith('/atm')
+            ? 'bg-[#7B61FF]/10 text-[#7B61FF]'
+            : 'text-gray-400 hover:text-white hover:bg-white/5'"
           :aria-current="route.path.startsWith('/atm') ? 'page' : undefined"
         >
-          <Cpu class="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+          <Cpu class="w-5 h-5 flex-shrink-0" aria-hidden="true" />
           ATM Terminal
         </RouterLink>
         <button
           @click="logout"
-          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#6B6B7E] hover:text-[#FF5E5B] hover:bg-[#FF5E5B]/[0.06] transition-colors"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-400 hover:text-[#FF5E5B] hover:bg-[#FF5E5B]/10 transition-all"
           aria-label="Sign out of Nova Bank"
         >
-          <LogOut class="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+          <LogOut class="w-5 h-5 flex-shrink-0" aria-hidden="true" />
           Sign out
         </button>
       </div>
     </aside>
 
-    <!-- ── Main ── -->
+    <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
 
       <!-- Mobile top bar -->
-      <header
-        class="md:hidden flex items-center justify-between px-4 h-14 flex-shrink-0"
-        style="background:#0E0E16; border-bottom:1px solid rgba(255,255,255,0.06);"
-      >
+      <header class="md:hidden flex items-center justify-between px-4 h-14 bg-[#14141A] border-b border-white/5 flex-shrink-0">
         <div class="flex items-center gap-2" aria-label="Nova Bank">
-          <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#7B61FF,#5C45CC);" aria-hidden="true">
-            <span class="text-white font-bold text-xs">N</span>
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#7B61FF] to-[#5C45CC] flex items-center justify-center" aria-hidden="true">
+            <span class="text-white font-bold text-xs">NL</span>
           </div>
-          <span class="font-semibold text-sm text-white">Nova Bank</span>
+          <span class="font-bold text-sm text-white">Nova Bank</span>
         </div>
-        <button
-          @click="logout"
-          class="p-2 text-[#6B6B7E] hover:text-white transition-colors rounded-lg"
-          aria-label="Sign out"
-        >
+        <button @click="logout" class="p-2 text-gray-400 hover:text-white transition-colors rounded-lg" aria-label="Sign out">
           <LogOut class="w-4 h-4" aria-hidden="true" />
         </button>
       </header>
 
-      <!-- Scrollable content -->
-      <main id="main-content" class="flex-1 overflow-y-auto" tabindex="-1">
-        <div class="px-5 py-8 md:px-8 max-w-4xl mx-auto">
+      <main id="main-content" class="flex-1 overflow-y-auto pb-20 md:pb-0 relative" tabindex="-1">
+        <div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-[#7B61FF]/5 to-transparent pointer-events-none" aria-hidden="true" />
+        <div class="p-4 md:p-8 max-w-5xl mx-auto relative z-10">
           <slot />
         </div>
       </main>
     </div>
 
-    <!-- ── Mobile bottom nav ── -->
+    <!-- Mobile Bottom Nav -->
     <nav
-      class="md:hidden fixed bottom-0 left-0 right-0 flex z-50"
-      style="background:rgba(14,14,22,0.97); backdrop-filter:blur(16px); border-top:1px solid rgba(255,255,255,0.06);"
+      class="md:hidden fixed bottom-0 left-0 right-0 flex z-50 bg-[#14141A]/90 backdrop-blur-xl border-t border-white/5"
       aria-label="Mobile navigation"
     >
       <RouterLink
@@ -134,7 +115,7 @@ function logout() {
         :key="item.path"
         :to="item.path"
         class="flex flex-col items-center gap-1 flex-1 py-3 transition-colors"
-        :class="isActive(item.path) ? 'text-[#7B61FF]' : 'text-[#4A4A5E]'"
+        :class="isActive(item.path) ? 'text-[#7B61FF]' : 'text-gray-500'"
         :aria-current="isActive(item.path) ? 'page' : undefined"
         :aria-label="item.label"
       >

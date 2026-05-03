@@ -58,7 +58,7 @@ async function executeTransfer() {
         <p class="text-sm font-semibold text-[#FF5E5B]">{{ error }}</p>
       </div>
 
-      <div class="bg-[#0D0D14] border border-white/[0.05] rounded-2xl overflow-hidden">
+      <div class="bg-[#14141A] border border-white/[0.05] rounded-2xl overflow-hidden">
         <!-- Header accent -->
         <div class="h-1 w-full bg-gradient-to-r from-[#FF5E5B] to-[#FF8A87]"></div>
 

@@ -4,7 +4,7 @@
 /* ── Reset & Base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 * { font-family: 'Inter', sans-serif; }
-body { background: #08080D; color: #fff; -webkit-font-smoothing: antialiased; }
+body { background: #0A0A0F; color: #fff; -webkit-font-smoothing: antialiased; }
 
 /* ── Focus — WCAG 2.1 AA (3:1 min, we exceed it) ──────────── */
 :focus { outline: none; }
@@ -56,7 +56,7 @@ input[type=number] { -moz-appearance: textfield; }
   to   { background-position: calc(600px + 100%) 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #141420 25%, #1c1c2a 50%, #141420 75%);
+  background: linear-gradient(90deg, #14141A 25%, #1C1C24 50%, #14141A 75%);
   background-size: 600px 100%;
   animation: shimmer 1.6s infinite;
   border-radius: 10px;

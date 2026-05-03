@@ -56,7 +56,7 @@ onMounted(loadTransactions)
     </div>
 
     <!-- Filters panel -->
-    <div v-if="showFilters" class="bg-[#0D0D14] border border-white/[0.06] rounded-2xl p-4 mb-4">
+    <div v-if="showFilters" class="bg-[#14141A] border border-white/[0.06] rounded-2xl p-4 mb-4">
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
         <div>
           <label class="block text-[10px] text-gray-600 mb-1.5 uppercase tracking-wider">From date</label>
@@ -89,7 +89,7 @@ onMounted(loadTransactions)
     </div>
 
     <!-- Table -->
-    <div v-else class="bg-[#0D0D14] rounded-2xl border border-white/[0.05] overflow-hidden">
+    <div v-else class="bg-[#14141A] rounded-2xl border border-white/[0.05] overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left">
           <thead>
@@ -143,9 +143,9 @@ onMounted(loadTransactions)
 
     <!-- Pagination -->
     <div v-if="totalPages > 1" class="flex items-center justify-center gap-2 mt-5">
-      <button :disabled="page === 0" @click="page--; loadTransactions()" class="px-3 py-1.5 rounded-lg bg-[#0D0D14] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
+      <button :disabled="page === 0" @click="page--; loadTransactions()" class="px-3 py-1.5 rounded-lg bg-[#14141A] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
       <span class="text-xs text-gray-600 px-2">{{ page + 1 }} / {{ totalPages }}</span>
-      <button :disabled="page >= totalPages - 1" @click="page++; loadTransactions()" class="px-3 py-1.5 rounded-lg bg-[#0D0D14] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">Next →</button>
+      <button :disabled="page >= totalPages - 1" @click="page++; loadTransactions()" class="px-3 py-1.5 rounded-lg bg-[#14141A] border border-white/10 text-xs text-gray-400 hover:text-white disabled:opacity-30 transition-all">Next →</button>
     </div>
   </EmployeeLayout>
 </template>

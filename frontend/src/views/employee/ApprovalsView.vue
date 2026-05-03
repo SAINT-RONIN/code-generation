@@ -48,7 +48,7 @@ async function handleApprove(customerId) {
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="pendingCustomers.length === 0" class="flex flex-col items-center justify-center py-20 bg-[#0D0D14] border border-white/[0.05] rounded-2xl">
+    <div v-else-if="pendingCustomers.length === 0" class="flex flex-col items-center justify-center py-20 bg-[#14141A] border border-white/[0.05] rounded-2xl">
       <div class="w-14 h-14 bg-[#00D9A3]/10 rounded-full flex items-center justify-center mb-4">
         <CheckCircle2 class="w-7 h-7 text-[#00D9A3]" />
       </div>
@@ -61,7 +61,7 @@ async function handleApprove(customerId) {
       <div
         v-for="customer in pendingCustomers"
         :key="customer.id"
-        class="bg-[#0D0D14] border border-white/[0.05] rounded-2xl p-5 flex flex-col hover:border-white/10 transition-all"
+        class="bg-[#14141A] border border-white/[0.05] rounded-2xl p-5 flex flex-col hover:border-white/10 transition-all"
       >
         <!-- Customer info -->
         <div class="flex items-start gap-3 mb-5">
