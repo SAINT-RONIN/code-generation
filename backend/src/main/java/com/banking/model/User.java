@@ -1,8 +1,6 @@
 package com.banking.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -21,24 +19,17 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
     private String firstName;
 
-    @NotBlank
     private String lastName;
 
-    @Email
-    @NotBlank
     @Column(unique = true)
     private String email;
 
-    @NotBlank
     private String password;
 
-    @NotBlank
     private String bsn;
 
-    @NotBlank
     private String phoneNumber;
 
     @Enumerated(EnumType.STRING)

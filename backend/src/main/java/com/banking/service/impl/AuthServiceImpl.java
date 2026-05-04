@@ -36,6 +36,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest request) {
         User user = findUserByEmailOrThrow(request.email());
+        if (!user.isActive()) throw new BadCredentialsException("Invalid email or password");
         verifyPassword(request.password(), user.getPassword());
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
         return new LoginResponse(token, user.getRole().name());

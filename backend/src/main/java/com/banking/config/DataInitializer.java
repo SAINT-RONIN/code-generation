@@ -63,22 +63,14 @@ public class DataInitializer implements CommandLineRunner {
                 "123456789", "0612345678",
                 User.Role.CUSTOMER
         ));
-        accountRepository.save(new Account(
-                generateUniqueIban(), AccountType.CHECKING,
-                BigDecimal.ZERO, new BigDecimal("2000.00"), customer
-        ));
-        accountRepository.save(new Account(
-                generateUniqueIban(), AccountType.SAVINGS,
-                BigDecimal.ZERO, new BigDecimal("500.00"), customer
-        ));
-        setStartingBalance(customer);
+        accountRepository.save(buildAccount(generateUniqueIban(), AccountType.CHECKING, new BigDecimal("2000.00"), customer));
+        accountRepository.save(buildAccount(generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("500.00"), customer));
     }
 
-    private void setStartingBalance(User customer) {
-        accountRepository.findAllByUserEmail(customer.getEmail()).forEach(account -> {
-            account.setBalance(new BigDecimal("1500.00"));
-            accountRepository.save(account);
-        });
+    private Account buildAccount(String iban, AccountType type, BigDecimal dailyLimit, User customer) {
+        Account account = new Account(iban, type, BigDecimal.ZERO, dailyLimit, customer);
+        account.setBalance(new BigDecimal("1500.00"));
+        return account;
     }
 
     private String generateUniqueIban() {

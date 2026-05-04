@@ -2,7 +2,6 @@ package com.banking.service.impl;
 
 import com.banking.dto.AccountResponse;
 import com.banking.dto.IbanSearchResponse;
-import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
 import com.banking.model.User;
 import com.banking.repository.AccountRepository;
@@ -27,32 +26,24 @@ public class AccountServiceImpl implements AccountService {
     public List<IbanSearchResponse> searchCustomerCheckingIbansByName(String firstName, String lastName) {
         return userRepository.searchApprovedCustomersByName(firstName, lastName)
                 .stream()
+                .filter(customer -> customer.getAccounts().stream().anyMatch(a -> a.getAccountType() == AccountType.CHECKING))
                 .map(this::mapUserToIbanSearchResponse)
                 .toList();
     }
 
     @Override
     public List<AccountResponse> findMyAccounts(String email) {
-        return accountRepository.findAllByUserEmail(email).stream()
-                .map(this::mapToAccountResponse)
+        return accountRepository.findAllByUserEmailAndActiveTrue(email).stream()
+                .map(AccountResponse::from)
                 .toList();
     }
 
     private IbanSearchResponse mapUserToIbanSearchResponse(User customer) {
         String checkingIban = customer.getAccounts().stream()
                 .filter(account -> account.getAccountType() == AccountType.CHECKING)
-                .map(Account::getIban)
+                .map(com.banking.model.Account::getIban)
                 .findFirst()
-                .orElse(null);
+                .orElseThrow();
         return new IbanSearchResponse(customer.getFirstName(), customer.getLastName(), checkingIban);
-    }
-
-    private AccountResponse mapToAccountResponse(Account account) {
-        User owner = account.getUser();
-        return new AccountResponse(
-                account.getId(), account.getIban(), account.getAccountType().name(),
-                account.getBalance(), account.getAbsoluteLimit(), account.getDailyLimit(),
-                account.isActive(), owner.getFirstName() + " " + owner.getLastName(), owner.getEmail()
-        );
     }
 }

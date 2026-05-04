@@ -54,7 +54,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public Page<AccountResponse> findAllCustomerAccounts(Pageable pageable) {
         return accountRepository.findAllByUserRole(User.Role.CUSTOMER, pageable)
-                .map(this::mapAccountToAccountResponse);
+                .map(AccountResponse::from);
     }
 
     @Override
@@ -107,15 +107,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         return new PendingCustomerResponse(
                 user.getId(), user.getFirstName(), user.getLastName(),
                 user.getEmail(), user.getBsn(), user.getPhoneNumber()
-        );
-    }
-
-    private AccountResponse mapAccountToAccountResponse(Account account) {
-        User owner = account.getUser();
-        return new AccountResponse(
-                account.getId(), account.getIban(), account.getAccountType().name(),
-                account.getBalance(), account.getAbsoluteLimit(), account.getDailyLimit(),
-                account.isActive(), owner.getFirstName() + " " + owner.getLastName(), owner.getEmail()
         );
     }
 }
