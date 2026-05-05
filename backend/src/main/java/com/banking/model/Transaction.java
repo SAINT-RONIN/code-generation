@@ -8,6 +8,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/** An immutable record of a single financial movement (transfer, deposit, or withdrawal). */
 @Entity
 @Table(name = "transactions")
 @Getter

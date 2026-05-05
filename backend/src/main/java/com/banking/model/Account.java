@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
+/** A bank account owned by a customer; IBAN is the primary key. */
 @Entity
 @Table(name = "accounts")
 @Getter

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+/** Seeds the database with a default employee and test customer on first startup. */
 @Component
 public class DataInitializer implements CommandLineRunner {
 

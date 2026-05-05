@@ -8,6 +8,7 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Represents a bank user; role is either CUSTOMER or EMPLOYEE, status drives login access. */
 @Entity
 @Table(name = "users")
 @Getter

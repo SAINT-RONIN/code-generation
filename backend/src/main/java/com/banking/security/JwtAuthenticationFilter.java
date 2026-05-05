@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/** Reads the Bearer token from each request and populates the SecurityContext when valid. */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -35,6 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    // Returns null when the header is absent or not a Bearer token
     private String extractBearerToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {

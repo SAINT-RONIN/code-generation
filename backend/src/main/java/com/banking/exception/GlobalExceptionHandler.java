@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.List;
 import java.util.Map;
 
+/** Maps domain exceptions to structured HTTP error responses. */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

@@ -19,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/** Configures stateless JWT security, CORS, and public endpoint rules. */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
