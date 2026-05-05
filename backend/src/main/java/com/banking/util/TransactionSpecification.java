@@ -32,6 +32,12 @@ public class TransactionSpecification {
         if (filter.getAmountGt() != null)
             spec = spec.and((root, query, criteriaBuilder) ->
                     criteriaBuilder.greaterThan(root.get("amount"), filter.getAmountGt()));
+        if (filter.getAmountMin() != null)
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("amount"), filter.getAmountMin()));
+        if (filter.getAmountMax() != null)
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("amount"), filter.getAmountMax()));
         if (filter.getIban() != null)
             spec = spec.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
                     criteriaBuilder.equal(root.get("fromIban"), filter.getIban()),

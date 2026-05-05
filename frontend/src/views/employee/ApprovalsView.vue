@@ -1,34 +1,63 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { Check, X, CheckSquare } from 'lucide-vue-next'
 import EmployeeLayout from '../../components/EmployeeLayout.vue'
-import { getPendingCustomers, approveCustomer } from '../../services/employee'
-import { CheckCircle2, XCircle, User } from 'lucide-vue-next'
+import VPageHeader from '../../components/ui/VPageHeader.vue'
+import VCard from '../../components/ui/VCard.vue'
+import VPill from '../../components/ui/VPill.vue'
+import VBtn from '../../components/ui/VBtn.vue'
+import VModal from '../../components/ui/VModal.vue'
+import VField from '../../components/ui/VField.vue'
+import VTextInput from '../../components/ui/VTextInput.vue'
+import { getCustomers, updateCustomer } from '../../services/employee'
 
-const pendingCustomers = ref([])
+const pending = ref([])
 const loading = ref(true)
-const selectedId = ref(null)
+const error = ref('')
+
+const selected = ref(null)
 const dailyLimit = ref('2000')
 const absoluteLimit = ref('0')
 const approving = ref(false)
+const approved = ref(false)
 
 onMounted(async () => {
+  await loadPending()
+})
+
+async function loadPending() {
+  loading.value = true
+  error.value = ''
   try {
-    const { data } = await getPendingCustomers()
-    pendingCustomers.value = data
+    const { data } = await getCustomers({ status: 'PENDING', size: 200 })
+    pending.value = data.content ?? []
+  } catch {
+    error.value = 'Could not load pending registrations.'
   } finally {
     loading.value = false
   }
-})
+}
 
-async function handleApprove(customerId) {
+function openReview(p) {
+  selected.value = p
+  dailyLimit.value = '2000'
+  absoluteLimit.value = '0'
+  approved.value = false
+}
+
+async function handleApprove() {
   approving.value = true
   try {
-    await approveCustomer(customerId, {
+    await updateCustomer(selected.value.id, {
+      status: 'ACTIVE',
       dailyLimit: parseFloat(dailyLimit.value),
       absoluteLimit: parseFloat(absoluteLimit.value),
     })
-    pendingCustomers.value = pendingCustomers.value.filter(c => c.id !== customerId)
-    selectedId.value = null
+    pending.value = pending.value.filter(p => p.id !== selected.value.id)
+    approved.value = true
+  } catch (e) {
+    error.value = e?.response?.data?.message || 'Approval failed. Please try again.'
+    selected.value = null
   } finally {
     approving.value = false
   }
@@ -37,94 +66,131 @@ async function handleApprove(customerId) {
 
 <template>
   <EmployeeLayout>
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-white">Pending Approvals</h1>
-      <p class="text-sm text-gray-500 mt-1">{{ pendingCustomers.length }} customer{{ pendingCustomers.length !== 1 ? 's' : '' }} waiting for review.</p>
-    </div>
+    <VPageHeader
+      eyebrow="Staff portal"
+      title="Approvals"
+      :sub="loading ? '' : `${pending.length} registration${pending.length !== 1 ? 's' : ''} pending review`"
+    />
+
+    <!-- Error -->
+    <div
+      v-if="error"
+      class="mb-6 px-4 py-3 rounded-xl text-sm"
+      :style="{ background: 'rgba(155,44,44,.08)', color: 'var(--debit)', border: '1px solid rgba(155,44,44,.2)' }"
+    >{{ error }}</div>
 
     <!-- Loading -->
-    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      <div v-for="i in 3" :key="i" class="skeleton h-52 rounded-2xl"></div>
+    <div v-if="loading" class="space-y-2">
+      <div v-for="i in 4" :key="i" class="skeleton h-16 rounded-xl" />
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="pendingCustomers.length === 0" class="flex flex-col items-center justify-center py-20 bg-[#14141A] border border-white/[0.05] rounded-2xl">
-      <div class="w-14 h-14 bg-[#00D9A3]/10 rounded-full flex items-center justify-center mb-4">
-        <CheckCircle2 class="w-7 h-7 text-[#00D9A3]" />
-      </div>
-      <h3 class="text-white font-semibold mb-1">All caught up</h3>
-      <p class="text-sm text-gray-600">No pending approvals at the moment.</p>
-    </div>
-
-    <!-- Cards -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div
+      v-else-if="!pending.length"
+      class="rounded-2xl border py-20 text-center"
+      :style="{ background: 'var(--surface)', borderColor: 'var(--line)' }"
+    >
       <div
-        v-for="customer in pendingCustomers"
-        :key="customer.id"
-        class="bg-[#14141A] border border-white/[0.05] rounded-2xl p-5 flex flex-col hover:border-white/10 transition-all"
+        class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+        :style="{ background: 'var(--accent-soft)' }"
       >
-        <!-- Customer info -->
-        <div class="flex items-start gap-3 mb-5">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#7B61FF]/40 to-[#5C45CC]/40 flex items-center justify-center font-bold text-[#7B61FF] text-sm flex-shrink-0">
-            {{ customer.firstName.charAt(0) }}{{ customer.lastName.charAt(0) }}
-          </div>
+        <CheckSquare class="w-7 h-7" :style="{ color: 'var(--accent)' }" />
+      </div>
+      <p class="text-base font-medium" :style="{ color: 'var(--ink)' }">All caught up!</p>
+      <p class="text-sm mt-1" :style="{ color: 'var(--ink-3)' }">No pending registrations at this time.</p>
+    </div>
+
+    <!-- List -->
+    <VCard v-else>
+      <div class="divide-y" :style="{ borderColor: 'var(--line)' }">
+        <div
+          v-for="p in pending"
+          :key="p.id"
+          class="flex items-center gap-4 px-5 py-4 row cursor-pointer"
+          @click="openReview(p)"
+        >
+          <div
+            class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
+            :style="{ background: 'var(--accent)', color: 'var(--accent-ink)' }"
+          >{{ p.firstName[0] }}{{ p.lastName[0] }}</div>
+
           <div class="flex-1 min-w-0">
-            <p class="font-semibold text-white truncate">{{ customer.firstName }} {{ customer.lastName }}</p>
-            <p class="text-xs text-gray-600 truncate">{{ customer.email }}</p>
+            <p class="text-sm font-medium" :style="{ color: 'var(--ink)' }">{{ p.firstName }} {{ p.lastName }}</p>
+            <p class="text-xs truncate" :style="{ color: 'var(--ink-3)' }">{{ p.email }}</p>
           </div>
-          <span class="text-[10px] font-semibold px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-500 flex-shrink-0">PENDING</span>
-        </div>
 
-        <div class="grid grid-cols-2 gap-y-3 text-xs mb-5 flex-1">
-          <div>
-            <p class="text-gray-600 mb-0.5">Phone</p>
-            <p class="text-gray-300 font-medium">{{ customer.phoneNumber || '—' }}</p>
-          </div>
-          <div>
-            <p class="text-gray-600 mb-0.5">BSN</p>
-            <p class="text-gray-300 font-medium font-mono">{{ customer.bsn }}</p>
-          </div>
-        </div>
+          <VPill tone="warn">Pending</VPill>
 
-        <!-- Approve form inline -->
-        <div v-if="selectedId === customer.id" class="pt-4 border-t border-white/[0.05] space-y-3">
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Set Account Limits</p>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-[10px] text-gray-600 mb-1">Daily Limit (€)</label>
-              <input v-model="dailyLimit" type="number" class="w-full bg-[#1C1C24] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#00D9A3]/30" />
-            </div>
-            <div>
-              <label class="block text-[10px] text-gray-600 mb-1">Minimum Balance (€)</label>
-              <input v-model="absoluteLimit" type="number" class="w-full bg-[#1C1C24] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#00D9A3]/30" />
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <button @click="selectedId = null" class="flex-1 px-3 py-2 text-xs text-gray-500 hover:text-white bg-white/[0.04] hover:bg-white/[0.07] rounded-lg transition-all">Cancel</button>
-            <button
-              @click="handleApprove(customer.id)"
-              :disabled="approving"
-              class="flex-[2] px-3 py-2 text-xs font-semibold text-white bg-[#00D9A3] hover:bg-[#00c091] rounded-lg flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 shadow-lg shadow-[#00D9A3]/20"
-            >
-              <svg v-if="approving" class="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-              <CheckCircle2 v-else class="w-3 h-3" />
-              {{ approving ? 'Approving...' : 'Approve Account' }}
-            </button>
-          </div>
-        </div>
-
-        <div v-else class="flex gap-2 pt-4 border-t border-white/[0.05] mt-auto">
-          <button class="px-3 py-2 text-xs text-[#FF5E5B] hover:bg-[#FF5E5B]/10 rounded-lg flex items-center gap-1 transition-colors">
-            <XCircle class="w-3.5 h-3.5" /> Deny
-          </button>
           <button
-            @click="selectedId = customer.id"
-            class="flex-1 px-3 py-2 text-xs font-semibold text-white bg-[#7B61FF] hover:bg-[#6A52E5] rounded-lg transition-colors"
+            class="w-8 h-8 rounded-lg flex items-center justify-center lift"
+            :style="{ background: 'var(--accent-soft)', color: 'var(--accent)' }"
+            @click.stop="openReview(p)"
           >
-            Review &amp; Set Limits
+            <Check class="w-4 h-4" />
           </button>
         </div>
       </div>
-    </div>
+    </VCard>
+
+    <!-- Review modal -->
+    <VModal :open="!!selected" @close="selected = null">
+      <div v-if="selected" class="p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-lg font-semibold" :style="{ color: 'var(--ink)' }">Review registration</h2>
+          <button @click="selected = null" :style="{ color: 'var(--ink-3)' }"><X class="w-5 h-5" /></button>
+        </div>
+
+        <div v-if="!approved">
+          <!-- Customer info -->
+          <div class="rounded-xl p-4 mb-5 space-y-3" :style="{ background: 'var(--surface-2)' }">
+            <div class="flex justify-between text-sm">
+              <span :style="{ color: 'var(--ink-3)' }">Name</span>
+              <span class="font-medium" :style="{ color: 'var(--ink)' }">{{ selected.firstName }} {{ selected.lastName }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span :style="{ color: 'var(--ink-3)' }">Email</span>
+              <span :style="{ color: 'var(--ink)' }">{{ selected.email }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span :style="{ color: 'var(--ink-3)' }">BSN</span>
+              <span class="font-mono" :style="{ color: 'var(--ink)' }">{{ selected.bsn }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span :style="{ color: 'var(--ink-3)' }">Phone</span>
+              <span :style="{ color: 'var(--ink)' }">{{ selected.phoneNumber }}</span>
+            </div>
+          </div>
+
+          <!-- Limits -->
+          <div class="grid grid-cols-2 gap-3 mb-5">
+            <VField label="Daily limit (€)">
+              <VTextInput v-model="dailyLimit" type="number" placeholder="2000" />
+            </VField>
+            <VField label="Absolute limit (€)">
+              <VTextInput v-model="absoluteLimit" type="number" placeholder="0" />
+            </VField>
+          </div>
+
+          <div class="flex gap-3">
+            <VBtn variant="secondary" size="md" class="flex-1" @click="selected = null">Cancel</VBtn>
+            <VBtn variant="primary" size="md" class="flex-[2]" :disabled="approving" @click="handleApprove">
+              {{ approving ? 'Approving…' : 'Approve & create accounts' }}
+            </VBtn>
+          </div>
+        </div>
+
+        <div v-else class="text-center py-6">
+          <div
+            class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+            :style="{ background: 'var(--accent-soft)' }"
+          >
+            <Check class="w-7 h-7" :style="{ color: 'var(--accent)' }" />
+          </div>
+          <p class="font-semibold mb-1" :style="{ color: 'var(--ink)' }">{{ selected.firstName }} {{ selected.lastName }} approved</p>
+          <p class="text-sm mb-4" :style="{ color: 'var(--ink-3)' }">Checking and savings accounts created.</p>
+          <VBtn variant="primary" size="md" @click="selected = null">Done</VBtn>
+        </div>
+      </div>
+    </VModal>
   </EmployeeLayout>
 </template>

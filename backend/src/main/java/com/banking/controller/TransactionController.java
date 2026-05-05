@@ -24,32 +24,34 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionResponse> transfer(@Valid @RequestBody TransferRequest request,
                                                         @AuthenticationPrincipal UserDetails caller) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.transfer(request, caller.getUsername()));
+        boolean isEmployee = caller.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
+        TransactionResponse response = isEmployee
+                ? transactionService.employeeTransfer(request, caller.getUsername())
+                : transactionService.transfer(request, caller.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/atm/deposit")
-    public ResponseEntity<TransactionResponse> atmDeposit(@Valid @RequestBody AtmRequest request,
+    @PostMapping("/deposit")
+    public ResponseEntity<TransactionResponse> deposit(@Valid @RequestBody AtmRequest request,
+                                                       @AuthenticationPrincipal UserDetails caller) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(transactionService.deposit(request, caller.getUsername()));
+    }
+
+    @PostMapping("/withdrawal")
+    public ResponseEntity<TransactionResponse> withdrawal(@Valid @RequestBody AtmRequest request,
                                                           @AuthenticationPrincipal UserDetails caller) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.atmDeposit(request, caller.getUsername()));
-    }
-
-    @PostMapping("/atm/withdraw")
-    public ResponseEntity<TransactionResponse> atmWithdraw(@Valid @RequestBody AtmRequest request,
-                                                           @AuthenticationPrincipal UserDetails caller) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.atmWithdraw(request, caller.getUsername()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(transactionService.withdrawal(request, caller.getUsername()));
     }
 
     @GetMapping
-    public ResponseEntity<Page<TransactionResponse>> getAllTransactions(@ModelAttribute TransactionFilter filter,
-                                                                        Pageable pageable) {
-        return ResponseEntity.ok(transactionService.findAllTransactions(filter, pageable));
-    }
-
-    @GetMapping("/{iban}")
-    public ResponseEntity<Page<TransactionResponse>> getTransactionHistory(@PathVariable String iban,
-                                                                           @ModelAttribute TransactionFilter filter,
-                                                                           Pageable pageable,
-                                                                           @AuthenticationPrincipal UserDetails caller) {
-        return ResponseEntity.ok(transactionService.findTransactionsForIban(iban, filter, pageable, caller.getUsername()));
+    public ResponseEntity<Page<TransactionResponse>> getTransactions(@ModelAttribute TransactionFilter filter,
+                                                                      Pageable pageable,
+                                                                      @AuthenticationPrincipal UserDetails caller) {
+        boolean isEmployee = caller.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
+        return ResponseEntity.ok(transactionService.findTransactions(filter, pageable, caller.getUsername(), isEmployee));
     }
 }

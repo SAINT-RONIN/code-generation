@@ -16,5 +16,7 @@ public class TransactionFilter {
     private BigDecimal amountLt;
     private BigDecimal amountGt;
     private BigDecimal amountEq;
+    private BigDecimal amountMin;
+    private BigDecimal amountMax;
     private String iban;
 }

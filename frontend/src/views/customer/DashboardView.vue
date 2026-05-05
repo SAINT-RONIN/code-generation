@@ -1,180 +1,211 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
+import { Eye, EyeOff, Send, Search, AlignLeft, ArrowRight } from 'lucide-vue-next'
 import CustomerLayout from '../../components/CustomerLayout.vue'
+import ActivityRow from '../../components/ActivityRow.vue'
+import VCard from '../../components/ui/VCard.vue'
+import CopyChip from '../../components/ui/CopyChip.vue'
 import { getMyAccounts } from '../../services/accounts'
-import { getHistory } from '../../services/transactions'
-import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Search, ChevronRight, History, MapPin } from 'lucide-vue-next'
+import { getTransactions } from '../../services/transactions'
 
 const accounts = ref([])
-const recentTransactions = ref([])
+const transactions = ref([])
 const loading = ref(true)
+const masked = ref(false)
 
-const totalBalance = computed(() => accounts.value.reduce((s, a) => s + parseFloat(a.balance), 0))
-const checkingAccount = computed(() => accounts.value.find(a => a.accountType === 'CHECKING'))
+const myIbans = computed(() => accounts.value.map(a => a.iban))
 
-function eur(val) { return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(val) }
-function shortDate(ts) { return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }
+const ownerName = computed(() => {
+  const u = accounts.value[0]?.user
+  if (!u) return 'there'
+  return u.firstName || 'there'
+})
 
-function sparkline() {
-  return Array.from({ length: 12 }, () => Math.floor(Math.random() * 80) + 20)
+function eur(val) {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0)
 }
+
+const totalBalance = computed(() =>
+  accounts.value.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0)
+)
+const totalDisplay = computed(() => masked.value ? '€ ••••••' : eur(totalBalance.value))
+
+const greeting = computed(() => {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+})
+const today = computed(() =>
+  new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+)
 
 onMounted(async () => {
   try {
     const { data } = await getMyAccounts()
     accounts.value = data
-    if (checkingAccount.value) {
-      const txRes = await getHistory(checkingAccount.value.iban, { size: 6, page: 0 })
-      recentTransactions.value = txRes.data.content || []
-    }
+
+    // Load recent transactions combining all accounts
+    const txResults = await Promise.all(
+      data.map(a => getTransactions({ iban: a.iban, size: 10, sort: 'timestamp,desc' }).catch(() => ({ data: { content: [] } })))
+    )
+    const allTx = txResults.flatMap(r => r.data.content ?? [])
+    // Deduplicate by id
+    const seen = new Set()
+    const unique = allTx.filter(tx => {
+      if (seen.has(tx.id)) return false
+      seen.add(tx.id)
+      return true
+    })
+    unique.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    transactions.value = unique.slice(0, 5)
+  } catch {
+    // errors handled per section below
   } finally {
     loading.value = false
   }
 })
 
 const quickActions = [
-  { icon: ArrowLeftRight, label: 'Transfer',  path: '/customer/transfer',     color: 'bg-[#7B61FF]' },
-  { icon: History,        label: 'History',   path: '/customer/transactions', color: 'bg-[#2A2A35]' },
-  { icon: Search,         label: 'Find IBAN', path: '/customer/find',         color: 'bg-[#2A2A35]' },
-  { icon: MapPin,         label: 'ATM',       path: '/atm',                   color: 'bg-[#2A2A35]' },
+  { icon: Send,      label: 'Move money',      to: '/customer/transfer?mode=own',   desc: 'Between your accounts' },
+  { icon: Send,      label: 'Send to someone', to: '/customer/transfer?mode=other', desc: 'External transfer' },
+  { icon: Search,    label: 'Find IBAN',        to: '/customer/find',                desc: 'Look up a customer' },
+  { icon: AlignLeft, label: 'Statement',        to: '/customer/transactions',         desc: 'Full history' },
 ]
 </script>
 
 <template>
   <CustomerLayout>
+    <!-- Greeting -->
+    <div class="fade-up mb-8">
+      <p class="text-sm mb-1" :style="{ color: 'var(--ink-3)' }">{{ today }}</p>
+      <h1 class="font-display" style="font-size: 36px; line-height: 1.1; font-weight: 400;" :style="{ color: 'var(--ink)' }">
+        {{ greeting }}, {{ ownerName }}.
+      </h1>
+    </div>
 
-    <!-- Skeleton -->
-    <div v-if="loading" class="space-y-8" aria-busy="true" aria-label="Loading dashboard">
-      <div class="skeleton h-20 w-64 rounded-2xl"></div>
-      <div class="flex gap-4">
-        <div v-for="i in 2" :key="i" class="skeleton h-48 w-72 rounded-2xl flex-shrink-0"></div>
+    <!-- Loading skeletons -->
+    <div v-if="loading" class="space-y-4">
+      <div class="skeleton h-32 rounded-2xl" />
+      <div class="grid grid-cols-2 gap-4">
+        <div class="skeleton h-44 rounded-2xl" />
+        <div class="skeleton h-44 rounded-2xl" />
       </div>
-      <div class="skeleton h-40 rounded-2xl"></div>
     </div>
 
     <template v-else>
-
       <!-- Balance hero -->
-      <section class="mb-10 mt-4 md:mt-0 text-center md:text-left fade-up" aria-label="Account summary">
-        <p class="text-gray-400 font-medium mb-2">Total Balance</p>
-        <h1 class="text-5xl md:text-7xl font-bold tracking-tighter tabular-nums mb-3 text-white">
-          {{ eur(totalBalance) }}
-        </h1>
-        <div
-          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00D9A3]/10 text-[#00D9A3] text-sm font-medium"
-        >
-          <ArrowUpRight class="w-4 h-4" aria-hidden="true" />
-          <span>{{ accounts.length }} active account{{ accounts.length !== 1 ? 's' : '' }}</span>
+      <div
+        class="fade-up delay-1 rounded-2xl p-8 mb-6"
+        :style="{ background: 'var(--surface)', border: '1px solid var(--line)' }"
+      >
+        <div class="flex items-center gap-3 mb-2">
+          <p class="text-sm font-medium" :style="{ color: 'var(--ink-3)' }">Total balance</p>
+          <button
+            class="w-7 h-7 rounded-lg flex items-center justify-center"
+            :style="{ background: 'var(--surface-2)', color: 'var(--ink-3)' }"
+            @click="masked = !masked"
+            :aria-label="masked ? 'Show balance' : 'Hide balance'"
+          >
+            <EyeOff v-if="!masked" class="w-3.5 h-3.5" />
+            <Eye v-else class="w-3.5 h-3.5" />
+          </button>
         </div>
-      </section>
+        <span
+          class="font-display tabnum"
+          style="font-size: 52px; line-height: 1; font-weight: 400;"
+          :style="{ color: 'var(--ink)' }"
+        >
+          {{ totalDisplay }}
+        </span>
+        <p class="text-sm mt-3" :style="{ color: 'var(--ink-3)' }">
+          Across {{ accounts.length }} account{{ accounts.length !== 1 ? 's' : '' }}
+        </p>
+      </div>
 
       <!-- Account Cards -->
-      <section class="mb-10 fade-up-1" aria-label="Your accounts">
-        <div class="flex overflow-x-auto gap-4 pb-6 hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
-          <article
-            v-for="account in accounts"
-            :key="account.id"
-            class="flex-none w-72 md:w-80 h-48 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1 transition-transform duration-200 cursor-pointer shadow-xl"
-            :class="account.accountType === 'CHECKING'
-              ? 'bg-gradient-to-br from-[#2D1B69] to-[#1A1040]'
-              : 'bg-gradient-to-br from-[#2A2A35] to-[#14141A]'"
-            :aria-label="`${account.accountType.toLowerCase()} account, balance ${eur(account.balance)}`"
+      <div v-if="accounts.length" class="fade-up delay-2 grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <RouterLink
+          v-for="(account, i) in accounts"
+          :key="account.iban"
+          :to="`/customer/account/${account.iban}`"
+          class="no-underline"
+        >
+          <div
+            class="rounded-2xl p-6 h-44 flex flex-col justify-between lift cursor-pointer"
+            :class="i === 0 ? 'card-vault' : 'card-savings'"
           >
-            <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" aria-hidden="true" />
-
             <div>
-              <p class="text-white/70 text-sm font-medium mb-1 capitalize">{{ account.accountType.toLowerCase() }} Account</p>
-              <h3 class="text-2xl font-bold tabular-nums text-white">{{ eur(account.balance) }}</h3>
+              <p class="text-xs font-medium uppercase tracking-[.1em] opacity-70">{{ account.accountType }}</p>
             </div>
-
             <div>
-              <p class="font-mono text-sm tracking-widest text-white/50 mb-1">
-                {{ account.iban.slice(0,4) }} {{ account.iban.slice(4,8) }} ···· {{ account.iban.slice(-4) }}
-              </p>
-              <div class="w-full h-8 flex items-end gap-0.5 opacity-40 group-hover:opacity-80 transition-opacity" aria-hidden="true">
-                <div
-                  v-for="(h, i) in sparkline()"
-                  :key="i"
-                  class="flex-1 bg-white/30 rounded-t-sm"
-                  :style="`height:${h}%`"
-                ></div>
+              <div class="text-2xl font-display tabnum mb-2" style="font-weight: 400;">
+                {{ masked ? '€ ••••' : eur(account.balance) }}
               </div>
+              <CopyChip :value="account.iban" :light="i === 0" />
             </div>
-          </article>
-        </div>
-      </section>
+          </div>
+        </RouterLink>
+      </div>
+
+      <!-- No accounts state -->
+      <div
+        v-else
+        class="fade-up delay-2 rounded-2xl border py-12 text-center mb-6"
+        :style="{ background: 'var(--surface)', borderColor: 'var(--line)' }"
+      >
+        <p class="text-sm" :style="{ color: 'var(--ink-3)' }">No accounts found. Your accounts will appear here once approved.</p>
+      </div>
 
       <!-- Quick Actions -->
-      <section class="mb-10 fade-up-2" aria-label="Quick actions">
-        <div class="grid grid-cols-4 gap-3 md:gap-6">
-          <RouterLink
-            v-for="action in quickActions"
-            :key="action.path"
-            :to="action.path"
-            class="flex flex-col items-center gap-2 group"
-            :aria-label="action.label"
+      <div class="fade-up delay-3 grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <RouterLink
+          v-for="action in quickActions"
+          :key="action.label"
+          :to="action.to"
+          class="qa-tile no-underline rounded-2xl p-4 flex flex-col gap-2 lift"
+        >
+          <div
+            class="w-8 h-8 rounded-lg flex items-center justify-center"
+            :style="{ background: 'var(--accent-soft)', color: 'var(--accent)' }"
           >
-            <div
-              class="w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-transform duration-150 group-hover:scale-105 shadow-lg"
-              :class="action.color"
-            >
-              <component :is="action.icon" class="w-5 h-5 md:w-6 md:h-6 text-white" aria-hidden="true" />
-            </div>
-            <span class="text-xs md:text-sm font-medium text-gray-400 group-hover:text-white transition-colors text-center">{{ action.label }}</span>
-          </RouterLink>
-        </div>
-      </section>
+            <component :is="action.icon" class="w-4 h-4" />
+          </div>
+          <div>
+            <p class="text-sm font-medium" :style="{ color: 'var(--ink)' }">{{ action.label }}</p>
+            <p class="text-xs" :style="{ color: 'var(--ink-3)' }">{{ action.desc }}</p>
+          </div>
+        </RouterLink>
+      </div>
 
-      <!-- Recent Transactions -->
-      <section class="fade-up-3" aria-label="Recent activity">
+      <!-- Recent Activity -->
+      <div class="fade-up delay-4">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold text-white">Recent Activity</h2>
+          <h2 class="text-base font-semibold" :style="{ color: 'var(--ink)' }">Recent activity</h2>
           <RouterLink
             to="/customer/transactions"
-            class="text-sm font-medium text-[#7B61FF] hover:text-[#907aff] flex items-center gap-1 transition-colors"
-            aria-label="View all transactions"
-          >
-            View All <ChevronRight class="w-4 h-4" aria-hidden="true" />
-          </RouterLink>
+            class="flex items-center gap-1 text-sm font-medium no-underline"
+            :style="{ color: 'var(--accent)' }"
+          >View all <ArrowRight class="w-4 h-4" /></RouterLink>
         </div>
 
-        <div class="bg-[#14141A] rounded-2xl border border-white/5 overflow-hidden">
-          <ul v-if="recentTransactions.length > 0" class="divide-y divide-white/5" role="list" aria-label="Recent transactions">
-            <li
-              v-for="tx in recentTransactions"
+        <VCard>
+          <div v-if="transactions.length" class="p-2">
+            <ActivityRow
+              v-for="tx in transactions"
               :key="tx.id"
-              class="flex items-center gap-4 p-4 hover:bg-white/[0.02] transition-colors cursor-pointer"
-            >
-              <div
-                class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                :class="tx.fromIban === checkingAccount?.iban
-                  ? 'text-[#FF5E5B] bg-[#FF5E5B]/10'
-                  : 'text-[#00D9A3] bg-[#00D9A3]/10'"
-                aria-hidden="true"
-              >
-                <ArrowUpRight v-if="tx.fromIban === checkingAccount?.iban" class="w-5 h-5" />
-                <ArrowDownLeft v-else class="w-5 h-5" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="font-medium text-white truncate">{{ tx.description || tx.type }}</p>
-                <p class="text-xs text-gray-500 capitalize">{{ tx.type.toLowerCase() }} · {{ shortDate(tx.timestamp) }}</p>
-              </div>
-              <div
-                class="font-bold tabular-nums whitespace-nowrap"
-                :class="tx.fromIban === checkingAccount?.iban ? 'text-white' : 'text-[#00D9A3]'"
-                :aria-label="`${tx.fromIban === checkingAccount?.iban ? 'Sent' : 'Received'} ${eur(tx.amount)}`"
-              >
-                {{ tx.fromIban === checkingAccount?.iban ? '−' : '+' }}{{ eur(tx.amount) }}
-              </div>
-            </li>
-          </ul>
-          <div v-else class="p-8 text-center text-gray-500 flex flex-col items-center gap-3">
-            <History class="w-8 h-8 opacity-20" aria-hidden="true" />
-            <p>No recent transactions</p>
+              :tx="tx"
+              :my-ibans="myIbans"
+              :masked="masked"
+            />
           </div>
-        </div>
-      </section>
-
+          <div v-else class="py-10 text-center">
+            <AlignLeft class="w-8 h-8 mx-auto mb-2" :style="{ color: 'var(--ink-3)' }" />
+            <p class="text-sm" :style="{ color: 'var(--ink-3)' }">No transactions yet</p>
+          </div>
+        </VCard>
+      </div>
     </template>
   </CustomerLayout>
 </template>

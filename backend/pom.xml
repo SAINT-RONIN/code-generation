@@ -80,6 +80,13 @@
             <version>2.8.6</version>
         </dependency>
 
+        <!-- iban4j -->
+        <dependency>
+            <groupId>org.iban4j</groupId>
+            <artifactId>iban4j</artifactId>
+            <version>3.2.7-RELEASE</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

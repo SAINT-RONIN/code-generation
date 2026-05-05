@@ -15,10 +15,6 @@ import java.math.BigDecimal;
 public class Account {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(unique = true, nullable = false)
     private String iban;
 
     @Enumerated(EnumType.STRING)

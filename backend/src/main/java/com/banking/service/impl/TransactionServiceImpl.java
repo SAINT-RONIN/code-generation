@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Transactional
@@ -54,7 +55,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public TransactionResponse atmDeposit(AtmRequest request, String callerEmail) {
+    public TransactionResponse deposit(AtmRequest request, String callerEmail) {
         Account account = findActiveAccountOrThrow(request.iban());
         verifyCallerOwnsAccount(account, callerEmail);
         account.setBalance(account.getBalance().add(request.amount()));
@@ -62,7 +63,7 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public TransactionResponse atmWithdraw(AtmRequest request, String callerEmail) {
+    public TransactionResponse withdrawal(AtmRequest request, String callerEmail) {
         Account account = findActiveAccountOrThrow(request.iban());
         verifyCallerOwnsAccount(account, callerEmail);
         deductWithLimitChecks(account, request.amount());
@@ -71,18 +72,28 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TransactionResponse> findTransactionsForIban(String iban, TransactionFilter filter, Pageable pageable, String callerEmail) {
-        verifyCallerOwnsIban(iban, callerEmail);
-        Specification<Transaction> spec = TransactionSpecification.involvesIban(iban)
-                .and(TransactionSpecification.matchesFilter(filter));
+    public Page<TransactionResponse> findTransactions(TransactionFilter filter, Pageable pageable,
+                                                       String callerEmail, boolean isEmployee) {
+        Specification<Transaction> spec = TransactionSpecification.matchesFilter(filter);
+        if (!isEmployee) {
+            // Customer: restrict to own IBANs
+            List<String> ownIbans = accountRepository.findAllByUserEmail(callerEmail)
+                    .stream().map(Account::getIban).toList();
+            if (ownIbans.isEmpty()) {
+                return Page.empty(pageable);
+            }
+            Specification<Transaction> ownSpec = (root, query, cb) -> cb.or(
+                    root.get("fromIban").in(ownIbans),
+                    root.get("toIban").in(ownIbans)
+            );
+            if (filter.getIban() != null && !filter.getIban().isBlank()) {
+                // also restrict to the requested iban if it belongs to the caller
+                spec = spec.and(ownSpec);
+            } else {
+                spec = spec.and(ownSpec);
+            }
+        }
         return transactionRepository.findAll(spec, pageable).map(this::toTransactionResponse);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<TransactionResponse> findAllTransactions(TransactionFilter filter, Pageable pageable) {
-        return transactionRepository.findAll(TransactionSpecification.matchesFilter(filter), pageable)
-                .map(this::toTransactionResponse);
     }
 
     private void deductWithLimitChecks(Account account, BigDecimal amount) {
@@ -127,12 +138,8 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
-    private void verifyCallerOwnsIban(String iban, String callerEmail) {
-        verifyCallerOwnsAccount(findActiveAccountOrThrow(iban), callerEmail);
-    }
-
     private Account findActiveAccountOrThrow(String iban) {
-        Account account = accountRepository.findByIban(iban)
+        Account account = accountRepository.findById(iban)
                 .orElseThrow(() -> new AccountNotFoundException(iban));
         if (!account.isActive()) {
             throw new AccountNotFoundException(iban);

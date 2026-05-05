@@ -8,6 +8,7 @@ const routes = [
 
   { path: '/customer', component: () => import('../views/customer/DashboardView.vue'), meta: { role: 'CUSTOMER' } },
   { path: '/customer/accounts', component: () => import('../views/customer/AccountsView.vue'), meta: { role: 'CUSTOMER' } },
+  { path: '/customer/account/:iban', component: () => import('../views/customer/AccountDetailView.vue'), meta: { role: 'CUSTOMER' } },
   { path: '/customer/transfer', component: () => import('../views/customer/TransferView.vue'), meta: { role: 'CUSTOMER' } },
   { path: '/customer/transactions', component: () => import('../views/customer/TransactionsView.vue'), meta: { role: 'CUSTOMER' } },
   { path: '/customer/find', component: () => import('../views/customer/FindIbanView.vue'), meta: { role: 'CUSTOMER' } },
@@ -15,10 +16,13 @@ const routes = [
   { path: '/employee', component: () => import('../views/employee/DashboardView.vue'), meta: { role: 'EMPLOYEE' } },
   { path: '/employee/approvals', component: () => import('../views/employee/ApprovalsView.vue'), meta: { role: 'EMPLOYEE' } },
   { path: '/employee/customers', component: () => import('../views/employee/CustomersView.vue'), meta: { role: 'EMPLOYEE' } },
+  { path: '/employee/customers/:id', component: () => import('../views/employee/CustomerDetailView.vue'), meta: { role: 'EMPLOYEE' } },
   { path: '/employee/transfer', component: () => import('../views/employee/TransferView.vue'), meta: { role: 'EMPLOYEE' } },
   { path: '/employee/transactions', component: () => import('../views/employee/TransactionsView.vue'), meta: { role: 'EMPLOYEE' } },
 
-  { path: '/atm', component: () => import('../views/atm/AtmMenuView.vue'), meta: { role: 'CUSTOMER' } },
+  { path: '/atm', redirect: '/atm/login' },
+  { path: '/atm/login', component: () => import('../views/atm/AtmLoginView.vue'), meta: { public: true } },
+  { path: '/atm/menu', component: () => import('../views/atm/AtmMenuView.vue'), meta: { role: 'CUSTOMER' } },
   { path: '/atm/deposit', component: () => import('../views/atm/AtmDepositView.vue'), meta: { role: 'CUSTOMER' } },
   { path: '/atm/withdraw', component: () => import('../views/atm/AtmWithdrawView.vue'), meta: { role: 'CUSTOMER' } },
 ]

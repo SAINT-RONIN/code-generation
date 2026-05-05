@@ -3,9 +3,11 @@ package com.banking.config;
 import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
 import com.banking.model.User;
+import com.banking.model.User.UserStatus;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
-import com.banking.util.IbanGenerator;
+import org.iban4j.CountryCode;
+import org.iban4j.Iban;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,23 +48,29 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedEmployee() {
-        userRepository.save(new User(
+        User employee = new User(
                 "Bank", "Employee",
                 employeeEmail,
                 passwordEncoder.encode(employeePassword),
                 "000000000", "0600000000",
                 User.Role.EMPLOYEE
-        ));
+        );
+        employee.setStatus(UserStatus.ACTIVE);
+        employee.setPin(passwordEncoder.encode("1234"));
+        userRepository.save(employee);
     }
 
     private void seedTestCustomer() {
-        User customer = userRepository.save(new User(
+        User customer = new User(
                 "Test", "Customer",
                 customerEmail,
                 passwordEncoder.encode(customerPassword),
                 "123456789", "0612345678",
                 User.Role.CUSTOMER
-        ));
+        );
+        customer.setStatus(UserStatus.ACTIVE);
+        customer.setPin(passwordEncoder.encode("1234"));
+        customer = userRepository.save(customer);
         accountRepository.save(buildAccount(generateUniqueIban(), AccountType.CHECKING, new BigDecimal("2000.00"), customer));
         accountRepository.save(buildAccount(generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("500.00"), customer));
     }
@@ -75,7 +83,9 @@ public class DataInitializer implements CommandLineRunner {
 
     private String generateUniqueIban() {
         String iban;
-        do { iban = IbanGenerator.generate(); } while (accountRepository.existsByIban(iban));
+        do {
+            iban = Iban.random(CountryCode.NL).toString();
+        } while (accountRepository.existsById(iban));
         return iban;
     }
 }

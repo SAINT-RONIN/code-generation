@@ -28,6 +28,8 @@ public class User {
 
     private String password;
 
+    private String pin;
+
     private String bsn;
 
     private String phoneNumber;
@@ -35,7 +37,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    private boolean active = true;
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.PENDING;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Account> accounts = new ArrayList<>();
@@ -43,6 +46,12 @@ public class User {
     public enum Role {
         CUSTOMER,
         EMPLOYEE
+    }
+
+    public enum UserStatus {
+        PENDING,
+        ACTIVE,
+        CLOSED
     }
 
     public User(String firstName, String lastName, String email, String password,

@@ -1,127 +1,178 @@
 <script setup>
-import { useRoute, useRouter } from 'vue-router'
-import { Home, CreditCard, ArrowLeftRight, History, Search, LogOut, Cpu } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { Home, Wallet, Send, AlignLeft, Search, Settings, Bell, LogOut } from 'lucide-vue-next'
+import IconLogo from './icons/IconLogo.vue'
+import { getMyAccounts } from '../services/accounts'
 
 const route = useRoute()
 const router = useRouter()
 
-const navItems = [
-  { icon: Home,           label: 'Home',      path: '/customer' },
-  { icon: CreditCard,     label: 'Accounts',  path: '/customer/accounts' },
-  { icon: ArrowLeftRight, label: 'Transfer',  path: '/customer/transfer' },
-  { icon: History,        label: 'History',   path: '/customer/transactions' },
-  { icon: Search,         label: 'Find IBAN', path: '/customer/find' },
-]
+const ownerName = ref('')
+const showUserMenu = ref(false)
 
-function isActive(path) {
-  return path === '/customer' ? route.path === '/customer' : route.path.startsWith(path)
-}
+const initials = computed(() => {
+  const parts = ownerName.value.trim().split(' ')
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return ownerName.value.slice(0, 2).toUpperCase() || '?'
+})
+const firstName = computed(() => ownerName.value.split(' ')[0] || 'Account')
+
+onMounted(async () => {
+  try {
+    const { data } = await getMyAccounts()
+    const u = data[0]?.user
+    ownerName.value = u ? `${u.firstName} ${u.lastName}` : ''
+  } catch { /* ignore */ }
+})
 
 function logout() {
   localStorage.removeItem('token')
   localStorage.removeItem('role')
   router.push('/login')
 }
+
+const navItems = [
+  { label: 'Overview',  to: '/customer',              icon: Home },
+  { label: 'Accounts',  to: '/customer/accounts',     icon: Wallet },
+  { label: 'Transfer',  to: '/customer/transfer',     icon: Send },
+  { label: 'History',   to: '/customer/transactions', icon: AlignLeft },
+  { label: 'Find IBAN', to: '/customer/find',         icon: Search },
+]
+
+function isActive(to) {
+  if (to === '/customer') return route.path === '/customer'
+  return route.path.startsWith(to)
+}
 </script>
 
 <template>
-  <div class="flex h-screen bg-[#0A0A0F] text-white">
-
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-
-    <!-- Desktop Sidebar -->
-    <aside
-      class="hidden md:flex w-64 bg-[#14141A] border-r border-white/5 flex-col flex-shrink-0"
-      role="complementary"
-      aria-label="Main navigation"
+  <div class="min-h-screen flex flex-col" :style="{ background: 'var(--bg)' }">
+    <!-- TopBar -->
+    <header
+      class="h-16 flex items-center px-8 gap-4 border-b flex-shrink-0 z-10"
+      :style="{ background: 'var(--surface)', borderColor: 'var(--line)' }"
     >
-      <div class="p-6 flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B61FF] to-[#5C45CC] flex items-center justify-center flex-shrink-0" aria-hidden="true">
-          <span class="text-white font-bold text-sm">NL</span>
+      <!-- Logo -->
+      <RouterLink to="/customer" class="flex items-center gap-2.5 flex-shrink-0 no-underline">
+        <IconLogo class="w-7 h-7" :style="{ color: 'var(--accent)' }" />
+        <span class="font-display text-[19px]" :style="{ color: 'var(--ink)' }">Impreza Bank</span>
+      </RouterLink>
+
+      <!-- Search -->
+      <div class="flex-1 hidden md:flex justify-center">
+        <div class="relative w-64">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" :style="{ color: 'var(--ink-3)' }" />
+          <input
+            type="text"
+            placeholder="Search…"
+            class="w-full h-9 pl-9 pr-3 text-sm rounded-xl"
+            :style="{ background: 'var(--surface-2)', color: 'var(--ink)', border: 'none', outline: 'none' }"
+          />
         </div>
-        <span class="font-bold text-lg tracking-tight text-white">Nova Bank</span>
       </div>
 
-      <nav class="flex-1 px-4 py-2 space-y-1" role="navigation" aria-label="Customer menu">
-        <RouterLink
-          v-for="item in navItems"
-          :key="item.path"
-          :to="item.path"
-          class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm"
-          :class="isActive(item.path)
-            ? 'bg-[#7B61FF]/10 text-[#7B61FF]'
-            : 'text-gray-400 hover:text-white hover:bg-white/5'"
-          :aria-current="isActive(item.path) ? 'page' : undefined"
+      <!-- Right: Bell + User menu -->
+      <div class="ml-auto flex items-center gap-2 relative">
+        <button
+          class="relative w-9 h-9 rounded-xl flex items-center justify-center"
+          :style="{ background: 'var(--surface-2)', color: 'var(--ink-2)' }"
+          aria-label="Notifications"
         >
-          <component :is="item.icon" class="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-          {{ item.label }}
-        </RouterLink>
+          <Bell class="w-4 h-4" />
+          <span class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full" :style="{ background: 'var(--accent)' }" />
+        </button>
+
+        <!-- Avatar button — click to open menu -->
+        <button
+          class="flex items-center gap-2 h-9 px-3 rounded-xl lift"
+          :style="{ background: 'var(--surface-2)' }"
+          @click="showUserMenu = !showUserMenu"
+        >
+          <div
+            class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+            :style="{ background: 'var(--accent)', color: 'var(--accent-ink)' }"
+          >{{ initials }}</div>
+          <span class="text-sm font-medium hidden sm:block" :style="{ color: 'var(--ink)' }">{{ firstName }}</span>
+        </button>
+
+        <!-- Dropdown menu -->
+        <div
+          v-if="showUserMenu"
+          class="absolute top-full right-0 mt-2 w-44 rounded-xl border shadow-lg overflow-hidden z-50"
+          :style="{ background: 'var(--surface)', borderColor: 'var(--line)' }"
+        >
+          <div class="px-4 py-3 border-b" :style="{ borderColor: 'var(--line)' }">
+            <p class="text-sm font-semibold truncate" :style="{ color: 'var(--ink)' }">{{ ownerName || firstName }}</p>
+            <p class="text-xs" :style="{ color: 'var(--ink-3)' }">Customer</p>
+          </div>
+          <button
+            class="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-left row"
+            :style="{ color: 'var(--debit)' }"
+            @click="logout"
+          >
+            <LogOut class="w-4 h-4" /> Log out
+          </button>
+        </div>
+
+        <!-- Click-outside backdrop -->
+        <div
+          v-if="showUserMenu"
+          class="fixed inset-0 z-40"
+          @click="showUserMenu = false"
+        />
+      </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Sidebar -->
+      <nav
+        class="w-[232px] flex-shrink-0 hidden lg:flex flex-col px-6 py-8 border-r"
+        :style="{ background: 'var(--bg)', borderColor: 'var(--line)' }"
+      >
+        <div class="flex flex-col gap-1 flex-1">
+          <RouterLink
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            class="nav-item flex items-center gap-3 h-10 px-3 rounded-lg text-sm font-medium no-underline transition-colors"
+            :aria-current="isActive(item.to) ? 'page' : undefined"
+            :style="isActive(item.to)
+              ? { background: 'var(--surface-2)', color: 'var(--ink)' }
+              : { color: 'var(--ink-2)' }"
+          >
+            <component :is="item.icon" class="w-4 h-4 flex-shrink-0" />
+            {{ item.label }}
+          </RouterLink>
+
+          <button
+            disabled
+            class="nav-item flex items-center gap-3 h-10 px-3 rounded-lg text-sm font-medium opacity-40 cursor-not-allowed text-left"
+            :style="{ color: 'var(--ink-2)' }"
+          >
+            <Settings class="w-4 h-4 flex-shrink-0" />
+            Settings
+          </button>
+        </div>
+
+        <div class="mt-6 border-t pt-4" :style="{ borderColor: 'var(--line)' }">
+          <button
+            class="nav-item flex items-center gap-3 h-10 px-3 rounded-lg text-sm font-medium w-full text-left lift"
+            :style="{ color: 'var(--debit)' }"
+            @click="logout"
+          >
+            <LogOut class="w-4 h-4 flex-shrink-0" />
+            Log out
+          </button>
+        </div>
       </nav>
 
-      <div class="p-4 border-t border-white/5 space-y-1">
-        <RouterLink
-          to="/atm"
-          class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
-          :class="route.path.startsWith('/atm')
-            ? 'bg-[#7B61FF]/10 text-[#7B61FF]'
-            : 'text-gray-400 hover:text-white hover:bg-white/5'"
-          :aria-current="route.path.startsWith('/atm') ? 'page' : undefined"
-        >
-          <Cpu class="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-          ATM Terminal
-        </RouterLink>
-        <button
-          @click="logout"
-          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-400 hover:text-[#FF5E5B] hover:bg-[#FF5E5B]/10 transition-all"
-          aria-label="Sign out of Nova Bank"
-        >
-          <LogOut class="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-          Sign out
-        </button>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-
-      <!-- Mobile top bar -->
-      <header class="md:hidden flex items-center justify-between px-4 h-14 bg-[#14141A] border-b border-white/5 flex-shrink-0">
-        <div class="flex items-center gap-2" aria-label="Nova Bank">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#7B61FF] to-[#5C45CC] flex items-center justify-center" aria-hidden="true">
-            <span class="text-white font-bold text-xs">NL</span>
-          </div>
-          <span class="font-bold text-sm text-white">Nova Bank</span>
-        </div>
-        <button @click="logout" class="p-2 text-gray-400 hover:text-white transition-colors rounded-lg" aria-label="Sign out">
-          <LogOut class="w-4 h-4" aria-hidden="true" />
-        </button>
-      </header>
-
-      <main id="main-content" class="flex-1 overflow-y-auto pb-20 md:pb-0 relative" tabindex="-1">
-        <div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-[#7B61FF]/5 to-transparent pointer-events-none" aria-hidden="true" />
-        <div class="p-4 md:p-8 max-w-5xl mx-auto relative z-10">
+      <!-- Main Content -->
+      <main class="flex-1 overflow-y-auto">
+        <div class="px-6 lg:px-12 py-10 max-w-[1280px] mx-auto w-full">
           <slot />
         </div>
       </main>
     </div>
-
-    <!-- Mobile Bottom Nav -->
-    <nav
-      class="md:hidden fixed bottom-0 left-0 right-0 flex z-50 bg-[#14141A]/90 backdrop-blur-xl border-t border-white/5"
-      aria-label="Mobile navigation"
-    >
-      <RouterLink
-        v-for="item in navItems"
-        :key="item.path"
-        :to="item.path"
-        class="flex flex-col items-center gap-1 flex-1 py-3 transition-colors"
-        :class="isActive(item.path) ? 'text-[#7B61FF]' : 'text-gray-500'"
-        :aria-current="isActive(item.path) ? 'page' : undefined"
-        :aria-label="item.label"
-      >
-        <component :is="item.icon" class="w-5 h-5" aria-hidden="true" />
-        <span class="text-[10px] font-medium">{{ item.label }}</span>
-      </RouterLink>
-    </nav>
   </div>
 </template>

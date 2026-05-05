@@ -5,6 +5,7 @@ import com.banking.dto.LoginResponse;
 import com.banking.dto.RegisterRequest;
 import com.banking.exception.EmailAlreadyInUseException;
 import com.banking.model.User;
+import com.banking.model.User.UserStatus;
 import com.banking.repository.UserRepository;
 import com.banking.security.JwtUtil;
 import com.banking.service.interfaces.AuthService;
@@ -36,10 +37,22 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest request) {
         User user = findUserByEmailOrThrow(request.email());
-        if (!user.isActive()) throw new BadCredentialsException("Invalid email or password");
+        if (user.getStatus() == UserStatus.PENDING) {
+            throw new BadCredentialsException("Account pending approval. Await employee activation.");
+        }
+        if (user.getStatus() == UserStatus.CLOSED) {
+            throw new BadCredentialsException("Account has been closed.");
+        }
         verifyPassword(request.password(), user.getPassword());
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
         return new LoginResponse(token, user.getRole().name());
+    }
+
+    @Override
+    public boolean verifyPin(String email, String pin) {
+        User user = findUserByEmailOrThrow(email);
+        if (user.getPin() == null) return false;
+        return passwordEncoder.matches(pin, user.getPin());
     }
 
     private User findUserByEmailOrThrow(String email) {
@@ -54,7 +67,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private User buildCustomerFrom(RegisterRequest request) {
-        return new User(
+        User user = new User(
                 request.firstName(),
                 request.lastName(),
                 request.email(),
@@ -63,5 +76,7 @@ public class AuthServiceImpl implements AuthService {
                 request.phoneNumber(),
                 User.Role.CUSTOMER
         );
+        user.setStatus(UserStatus.PENDING);
+        return user;
     }
 }
