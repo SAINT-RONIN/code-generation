@@ -24,12 +24,9 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionResponse> transfer(@Valid @RequestBody TransferRequest request,
                                                         @AuthenticationPrincipal UserDetails caller) {
-        boolean isEmployee = caller.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
-        TransactionResponse response = isEmployee
-                ? transactionService.employeeTransfer(request, caller.getUsername())
-                : transactionService.transfer(request, caller.getUsername());
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        boolean isEmployee = isEmployee(caller);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(transactionService.transfer(request, caller.getUsername(), isEmployee));
     }
 
     @PostMapping("/deposit")
@@ -50,8 +47,10 @@ public class TransactionController {
     public ResponseEntity<Page<TransactionResponse>> getTransactions(@ModelAttribute TransactionFilter filter,
                                                                       Pageable pageable,
                                                                       @AuthenticationPrincipal UserDetails caller) {
-        boolean isEmployee = caller.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
-        return ResponseEntity.ok(transactionService.findTransactions(filter, pageable, caller.getUsername(), isEmployee));
+        return ResponseEntity.ok(transactionService.findTransactions(filter, pageable, caller.getUsername(), isEmployee(caller)));
+    }
+
+    private boolean isEmployee(UserDetails caller) {
+        return caller.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
     }
 }

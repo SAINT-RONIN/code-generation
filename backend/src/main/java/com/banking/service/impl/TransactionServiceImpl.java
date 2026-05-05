@@ -34,24 +34,18 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public TransactionResponse transfer(TransferRequest request, String callerEmail) {
+    public TransactionResponse transfer(TransferRequest request, String callerEmail, boolean isEmployee) {
         Account from = findActiveAccountOrThrow(request.fromIban());
         Account to = findActiveAccountOrThrow(request.toIban());
-        verifyCallerOwnsAccount(from, callerEmail);
-        verifyTransferRules(from, to);
+        if (isEmployee) {
+            verifyBothAreCheckingAccounts(from, to);
+        } else {
+            verifyCallerOwnsAccount(from, callerEmail);
+            verifyTransferRules(from, to);
+        }
         deductWithLimitChecks(from, request.amount());
         to.setBalance(to.getBalance().add(request.amount()));
         return saveTransaction(request.fromIban(), request.toIban(), request.amount(), callerEmail, request.description(), TransactionType.TRANSFER);
-    }
-
-    @Override
-    public TransactionResponse employeeTransfer(TransferRequest request, String employeeEmail) {
-        Account from = findActiveAccountOrThrow(request.fromIban());
-        Account to = findActiveAccountOrThrow(request.toIban());
-        verifyBothAreCheckingAccounts(from, to);
-        deductWithLimitChecks(from, request.amount());
-        to.setBalance(to.getBalance().add(request.amount()));
-        return saveTransaction(request.fromIban(), request.toIban(), request.amount(), employeeEmail, request.description(), TransactionType.TRANSFER);
     }
 
     @Override
@@ -86,12 +80,7 @@ public class TransactionServiceImpl implements TransactionService {
                     root.get("fromIban").in(ownIbans),
                     root.get("toIban").in(ownIbans)
             );
-            if (filter.getIban() != null && !filter.getIban().isBlank()) {
-                // also restrict to the requested iban if it belongs to the caller
-                spec = spec.and(ownSpec);
-            } else {
-                spec = spec.and(ownSpec);
-            }
+            spec = spec.and(ownSpec);
         }
         return transactionRepository.findAll(spec, pageable).map(this::toTransactionResponse);
     }
