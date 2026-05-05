@@ -1,5 +1,7 @@
 package com.banking.dto;
 
+import com.banking.model.Transaction;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -12,4 +14,17 @@ public record TransactionResponse(
         String performedBy,
         String description,
         String transactionType
-) {}
+) {
+    public static TransactionResponse from(Transaction transaction) {
+        return new TransactionResponse(
+                transaction.getId(),
+                transaction.getFromIban(),
+                transaction.getToIban(),
+                transaction.getAmount(),
+                transaction.getTimestamp(),
+                transaction.getPerformedBy(),
+                transaction.getDescription(),
+                transaction.getTransactionType().name()
+        );
+    }
+}

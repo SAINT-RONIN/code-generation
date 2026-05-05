@@ -45,7 +45,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
         deductWithLimitChecks(from, request.amount());
         creditAccount(to, request.amount());
-        return toTransactionResponse(recordTransaction(request.fromIban(), request.toIban(), request.amount(), callerEmail, request.description(), TransactionType.TRANSFER));
+        return TransactionResponse.from(recordTransaction(request.fromIban(), request.toIban(), request.amount(), callerEmail, request.description(), TransactionType.TRANSFER));
     }
 
     @Override
@@ -53,7 +53,7 @@ public class TransactionServiceImpl implements TransactionService {
         Account account = findActiveAccountOrThrow(request.iban());
         verifyCallerOwnsAccount(account, callerEmail);
         creditAccount(account, request.amount());
-        return toTransactionResponse(recordTransaction(null, request.iban(), request.amount(), callerEmail, request.description(), TransactionType.DEPOSIT));
+        return TransactionResponse.from(recordTransaction(null, request.iban(), request.amount(), callerEmail, request.description(), TransactionType.DEPOSIT));
     }
 
     @Override
@@ -61,7 +61,7 @@ public class TransactionServiceImpl implements TransactionService {
         Account account = findActiveAccountOrThrow(request.iban());
         verifyCallerOwnsAccount(account, callerEmail);
         deductWithLimitChecks(account, request.amount());
-        return toTransactionResponse(recordTransaction(request.iban(), null, request.amount(), callerEmail, request.description(), TransactionType.WITHDRAWAL));
+        return TransactionResponse.from(recordTransaction(request.iban(), null, request.amount(), callerEmail, request.description(), TransactionType.WITHDRAWAL));
     }
 
     @Override
@@ -74,7 +74,7 @@ public class TransactionServiceImpl implements TransactionService {
             if (ownIbans.isEmpty()) return Page.empty(pageable);
             spec = spec.and(involvesAnyOf(ownIbans));
         }
-        return transactionRepository.findAll(spec, pageable).map(this::toTransactionResponse);
+        return transactionRepository.findAll(spec, pageable).map(TransactionResponse::from);
     }
 
     private List<String> getIbansForCustomer(String email) {
@@ -150,10 +150,4 @@ public class TransactionServiceImpl implements TransactionService {
         return transactionRepository.save(new Transaction(fromIban, toIban, amount, performedBy, description, type));
     }
 
-    private TransactionResponse toTransactionResponse(Transaction transaction) {
-        return new TransactionResponse(
-                transaction.getId(), transaction.getFromIban(), transaction.getToIban(),
-                transaction.getAmount(), transaction.getTimestamp(), transaction.getPerformedBy(),
-                transaction.getDescription(), transaction.getTransactionType().name());
-    }
 }
