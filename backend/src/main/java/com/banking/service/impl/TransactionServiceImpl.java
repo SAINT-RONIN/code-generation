@@ -70,19 +70,24 @@ public class TransactionServiceImpl implements TransactionService {
                                                        String callerEmail, boolean isEmployee) {
         Specification<Transaction> spec = TransactionSpecification.matchesFilter(filter);
         if (!isEmployee) {
-            // Customer: restrict to own IBANs
-            List<String> ownIbans = accountRepository.findAllByUserEmail(callerEmail)
-                    .stream().map(Account::getIban).toList();
-            if (ownIbans.isEmpty()) {
-                return Page.empty(pageable);
-            }
-            Specification<Transaction> ownSpec = (root, query, cb) -> cb.or(
-                    root.get("fromIban").in(ownIbans),
-                    root.get("toIban").in(ownIbans)
-            );
-            spec = spec.and(ownSpec);
+            List<String> ownIbans = getIbansForCustomer(callerEmail);
+            if (ownIbans.isEmpty()) return Page.empty(pageable);
+            spec = spec.and(involvesAnyOf(ownIbans));
         }
         return transactionRepository.findAll(spec, pageable).map(this::toTransactionResponse);
+    }
+
+    private List<String> getIbansForCustomer(String email) {
+        return accountRepository.findAllByUserEmail(email).stream()
+                .map(Account::getIban)
+                .toList();
+    }
+
+    private Specification<Transaction> involvesAnyOf(List<String> ibans) {
+        return (root, query, cb) -> cb.or(
+                root.get("fromIban").in(ibans),
+                root.get("toIban").in(ibans)
+        );
     }
 
     private void deductWithLimitChecks(Account account, BigDecimal amount) {

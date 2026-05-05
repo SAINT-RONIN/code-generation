@@ -41,44 +41,55 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public CustomerResponse updateCustomer(Long id, CustomerUpdateRequest request) {
         User customer = findCustomerOrThrow(id);
-
         if (request.status() != null) {
-            UserStatus newStatus = UserStatus.valueOf(request.status());
-            UserStatus oldStatus = customer.getStatus();
-
-            if (newStatus == UserStatus.ACTIVE && oldStatus == UserStatus.PENDING) {
-                // Approve: create accounts
-                BigDecimal dailyLimit = request.dailyLimit() != null ? request.dailyLimit() : BigDecimal.valueOf(2000);
-                BigDecimal absoluteLimit = request.absoluteLimit() != null ? request.absoluteLimit() : BigDecimal.ZERO;
-                accountRepository.save(buildAccount(AccountType.CHECKING, dailyLimit, absoluteLimit, customer));
-                accountRepository.save(buildAccount(AccountType.SAVINGS, dailyLimit, absoluteLimit, customer));
-                customer.setStatus(UserStatus.ACTIVE);
-            } else if (newStatus == UserStatus.CLOSED && (oldStatus == UserStatus.ACTIVE || oldStatus == UserStatus.PENDING)) {
-                // Close: deactivate all accounts
-                accountRepository.findAllByUserEmail(customer.getEmail())
-                        .forEach(a -> a.setActive(false));
-                customer.setStatus(UserStatus.CLOSED);
-            } else if (newStatus == UserStatus.ACTIVE && oldStatus == UserStatus.CLOSED) {
-                // Reopen: reactivate all accounts
-                accountRepository.findAllByUserEmail(customer.getEmail())
-                        .forEach(a -> a.setActive(true));
-                customer.setStatus(UserStatus.ACTIVE);
-            } else {
-                customer.setStatus(newStatus);
-            }
+            applyStatusTransition(customer, UserStatus.valueOf(request.status()), request);
+        } else if (hasLimitUpdates(request)) {
+            applyLimitUpdates(customer, request);
         }
-
-        // Update limits on existing accounts if provided (for non-PENDING transitions)
-        if ((request.dailyLimit() != null || request.absoluteLimit() != null)
-                && request.status() == null) {
-            accountRepository.findAllByUserEmail(customer.getEmail()).forEach(a -> {
-                if (request.dailyLimit() != null) a.setDailyLimit(request.dailyLimit());
-                if (request.absoluteLimit() != null) a.setAbsoluteLimit(request.absoluteLimit());
-            });
-        }
-
         userRepository.save(customer);
         return CustomerResponse.from(customer);
+    }
+
+    private void applyStatusTransition(User customer, UserStatus newStatus, CustomerUpdateRequest request) {
+        UserStatus current = customer.getStatus();
+        if (newStatus == UserStatus.ACTIVE && current == UserStatus.PENDING) {
+            approveCustomer(customer, request);
+        } else if (newStatus == UserStatus.CLOSED) {
+            closeCustomer(customer);
+        } else if (newStatus == UserStatus.ACTIVE && current == UserStatus.CLOSED) {
+            reopenCustomer(customer);
+        } else {
+            customer.setStatus(newStatus);
+        }
+    }
+
+    private void approveCustomer(User customer, CustomerUpdateRequest request) {
+        BigDecimal daily    = request.dailyLimit()    != null ? request.dailyLimit()    : BigDecimal.valueOf(2000);
+        BigDecimal absolute = request.absoluteLimit() != null ? request.absoluteLimit() : BigDecimal.ZERO;
+        accountRepository.save(buildAccount(AccountType.CHECKING, daily, absolute, customer));
+        accountRepository.save(buildAccount(AccountType.SAVINGS,  daily, absolute, customer));
+        customer.setStatus(UserStatus.ACTIVE);
+    }
+
+    private void closeCustomer(User customer) {
+        accountRepository.findAllByUserEmail(customer.getEmail()).forEach(a -> a.setActive(false));
+        customer.setStatus(UserStatus.CLOSED);
+    }
+
+    private void reopenCustomer(User customer) {
+        accountRepository.findAllByUserEmail(customer.getEmail()).forEach(a -> a.setActive(true));
+        customer.setStatus(UserStatus.ACTIVE);
+    }
+
+    private void applyLimitUpdates(User customer, CustomerUpdateRequest request) {
+        accountRepository.findAllByUserEmail(customer.getEmail()).forEach(account -> {
+            if (request.dailyLimit()    != null) account.setDailyLimit(request.dailyLimit());
+            if (request.absoluteLimit() != null) account.setAbsoluteLimit(request.absoluteLimit());
+        });
+    }
+
+    private boolean hasLimitUpdates(CustomerUpdateRequest request) {
+        return request.dailyLimit() != null || request.absoluteLimit() != null;
     }
 
     private Account buildAccount(AccountType type, BigDecimal dailyLimit, BigDecimal absoluteLimit, User customer) {

@@ -37,15 +37,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest request) {
         User user = findUserByEmailOrThrow(request.email());
+        verifyAccountIsActive(user);
+        verifyPassword(request.password(), user.getPassword());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        return new LoginResponse(token, user.getRole().name());
+    }
+
+    private void verifyAccountIsActive(User user) {
         if (user.getStatus() == UserStatus.PENDING) {
             throw new BadCredentialsException("Account pending approval. Await employee activation.");
         }
         if (user.getStatus() == UserStatus.CLOSED) {
             throw new BadCredentialsException("Account has been closed.");
         }
-        verifyPassword(request.password(), user.getPassword());
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
-        return new LoginResponse(token, user.getRole().name());
     }
 
     @Override
