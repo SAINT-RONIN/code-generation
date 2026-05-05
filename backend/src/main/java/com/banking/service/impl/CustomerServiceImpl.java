@@ -66,9 +66,13 @@ public class CustomerServiceImpl implements CustomerService {
     private void approveCustomer(User customer, CustomerUpdateRequest request) {
         BigDecimal daily    = request.dailyLimit()    != null ? request.dailyLimit()    : BigDecimal.valueOf(2000);
         BigDecimal absolute = request.absoluteLimit() != null ? request.absoluteLimit() : BigDecimal.ZERO;
+        createBothAccounts(customer, daily, absolute);
+        customer.setStatus(UserStatus.ACTIVE);
+    }
+
+    private void createBothAccounts(User customer, BigDecimal daily, BigDecimal absolute) {
         accountRepository.save(buildAccount(AccountType.CHECKING, daily, absolute, customer));
         accountRepository.save(buildAccount(AccountType.SAVINGS,  daily, absolute, customer));
-        customer.setStatus(UserStatus.ACTIVE);
     }
 
     private void closeCustomer(User customer) {

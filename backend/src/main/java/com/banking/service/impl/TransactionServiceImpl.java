@@ -36,7 +36,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public TransactionResponse transfer(TransferRequest request, String callerEmail, boolean isEmployee) {
         Account from = findActiveAccountOrThrow(request.fromIban());
-        Account to = findActiveAccountOrThrow(request.toIban());
+        Account to   = findActiveAccountOrThrow(request.toIban());
         if (isEmployee) {
             verifyBothAreCheckingAccounts(from, to);
         } else {
@@ -44,16 +44,16 @@ public class TransactionServiceImpl implements TransactionService {
             verifyTransferRules(from, to);
         }
         deductWithLimitChecks(from, request.amount());
-        to.setBalance(to.getBalance().add(request.amount()));
-        return saveTransaction(request.fromIban(), request.toIban(), request.amount(), callerEmail, request.description(), TransactionType.TRANSFER);
+        creditAccount(to, request.amount());
+        return toTransactionResponse(recordTransaction(request.fromIban(), request.toIban(), request.amount(), callerEmail, request.description(), TransactionType.TRANSFER));
     }
 
     @Override
     public TransactionResponse deposit(AtmRequest request, String callerEmail) {
         Account account = findActiveAccountOrThrow(request.iban());
         verifyCallerOwnsAccount(account, callerEmail);
-        account.setBalance(account.getBalance().add(request.amount()));
-        return saveTransaction(null, request.iban(), request.amount(), callerEmail, request.description(), TransactionType.DEPOSIT);
+        creditAccount(account, request.amount());
+        return toTransactionResponse(recordTransaction(null, request.iban(), request.amount(), callerEmail, request.description(), TransactionType.DEPOSIT));
     }
 
     @Override
@@ -61,7 +61,7 @@ public class TransactionServiceImpl implements TransactionService {
         Account account = findActiveAccountOrThrow(request.iban());
         verifyCallerOwnsAccount(account, callerEmail);
         deductWithLimitChecks(account, request.amount());
-        return saveTransaction(request.iban(), null, request.amount(), callerEmail, request.description(), TransactionType.WITHDRAWAL);
+        return toTransactionResponse(recordTransaction(request.iban(), null, request.amount(), callerEmail, request.description(), TransactionType.WITHDRAWAL));
     }
 
     @Override
@@ -141,11 +141,13 @@ public class TransactionServiceImpl implements TransactionService {
         return account;
     }
 
-    private TransactionResponse saveTransaction(String fromIban, String toIban, BigDecimal amount,
-                                                String performedBy, String description, TransactionType type) {
-        Transaction transaction = transactionRepository.save(
-                new Transaction(fromIban, toIban, amount, performedBy, description, type));
-        return toTransactionResponse(transaction);
+    private void creditAccount(Account account, BigDecimal amount) {
+        account.setBalance(account.getBalance().add(amount));
+    }
+
+    private Transaction recordTransaction(String fromIban, String toIban, BigDecimal amount,
+                                          String performedBy, String description, TransactionType type) {
+        return transactionRepository.save(new Transaction(fromIban, toIban, amount, performedBy, description, type));
     }
 
     private TransactionResponse toTransactionResponse(Transaction transaction) {
