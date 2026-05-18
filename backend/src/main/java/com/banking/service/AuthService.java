@@ -1,26 +1,25 @@
-package com.banking.service.impl;
+package com.banking.service;
 
 import com.banking.dto.LoginRequest;
 import com.banking.dto.LoginResponse;
 import com.banking.dto.RegisterRequest;
-import com.banking.exception.EmailAlreadyInUseException;
 import com.banking.model.User;
 import com.banking.model.User.UserStatus;
 import com.banking.repository.UserRepository;
 import com.banking.security.JwtUtil;
-import com.banking.service.interfaces.AuthService;
+import com.banking.service.interfaces.IAuthService;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AuthServiceImpl implements AuthService {
+public class AuthService implements IAuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
@@ -28,18 +27,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public User register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new EmailAlreadyInUseException(request.email());
-        }
-        return userRepository.save(buildCustomerFrom(request));
+        userRepository.ensureEmailAvailable(request.email());
+        return userRepository.create(buildCustomerFrom(request));
     }
 
     @Override
     public LoginResponse login(LoginRequest request) {
-        User user = findUserByEmailOrThrow(request.email());
+        User user = userRepository.findRequiredByEmail(request.email());
         verifyAccountIsActive(user);
         verifyPassword(request.password(), user.getPassword());
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
         return new LoginResponse(token, user.getRole().name());
     }
 
@@ -53,15 +50,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public boolean verifyPin(String email, String pin) {
-        User user = findUserByEmailOrThrow(email);
+    public boolean verifyPin(Long userId, String pin) {
+        User user = userRepository.findRequiredById(userId);
         if (user.getPin() == null) return false;
         return passwordEncoder.matches(pin, user.getPin());
-    }
-
-    private User findUserByEmailOrThrow(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
     }
 
     private void verifyPassword(String rawPassword, String encodedPassword) {

@@ -1,15 +1,14 @@
-package com.banking.service.impl;
+package com.banking.service;
 
 import com.banking.dto.CustomerResponse;
 import com.banking.dto.CustomerUpdateRequest;
-import com.banking.exception.CustomerNotFoundException;
 import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
 import com.banking.model.User;
 import com.banking.model.User.UserStatus;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
-import com.banking.service.interfaces.CustomerService;
+import com.banking.service.interfaces.ICustomerService;
 import org.iban4j.CountryCode;
 import org.iban4j.Iban;
 import org.springframework.data.domain.Page;
@@ -18,14 +17,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
-public class CustomerServiceImpl implements CustomerService {
+public class CustomerService implements ICustomerService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
 
-    public CustomerServiceImpl(UserRepository userRepository, AccountRepository accountRepository) {
+    public CustomerService(UserRepository userRepository, AccountRepository accountRepository) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
     }
@@ -33,20 +33,18 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional(readOnly = true)
     public Page<CustomerResponse> findCustomers(UserStatus status, String search, Pageable pageable) {
-        return userRepository.findCustomers(status, search, pageable)
-                .map(CustomerResponse::from);
+        return userRepository.findCustomerResponses(status, search, pageable);
     }
 
     @Override
     @Transactional
     public CustomerResponse updateCustomer(Long id, CustomerUpdateRequest request) {
-        User customer = findCustomerOrThrow(id);
+        User customer = userRepository.findRequiredCustomerById(id);
         if (request.status() != null) {
             applyStatusTransition(customer, UserStatus.valueOf(request.status()), request);
         } else if (hasLimitUpdates(request)) {
             applyLimitUpdates(customer, request);
         }
-        userRepository.save(customer);
         return CustomerResponse.from(customer);
     }
 
@@ -71,25 +69,24 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     private void createBothAccounts(User customer, BigDecimal daily, BigDecimal absolute) {
-        accountRepository.save(buildAccount(AccountType.CHECKING, daily, absolute, customer));
-        accountRepository.save(buildAccount(AccountType.SAVINGS,  daily, absolute, customer));
+        accountRepository.saveAll(List.of(
+                buildAccount(AccountType.CHECKING, daily, absolute, customer),
+                buildAccount(AccountType.SAVINGS, daily, absolute, customer)
+        ));
     }
 
     private void closeCustomer(User customer) {
-        accountRepository.findAllByUserEmail(customer.getEmail()).forEach(a -> a.setActive(false));
+        accountRepository.updateActiveByUserId(customer.getId(), false);
         customer.setStatus(UserStatus.CLOSED);
     }
 
     private void reopenCustomer(User customer) {
-        accountRepository.findAllByUserEmail(customer.getEmail()).forEach(a -> a.setActive(true));
+        accountRepository.updateActiveByUserId(customer.getId(), true);
         customer.setStatus(UserStatus.ACTIVE);
     }
 
     private void applyLimitUpdates(User customer, CustomerUpdateRequest request) {
-        accountRepository.findAllByUserEmail(customer.getEmail()).forEach(account -> {
-            if (request.dailyLimit()    != null) account.setDailyLimit(request.dailyLimit());
-            if (request.absoluteLimit() != null) account.setAbsoluteLimit(request.absoluteLimit());
-        });
+        accountRepository.updateLimitsByUserId(customer.getId(), request.dailyLimit(), request.absoluteLimit());
     }
 
     private boolean hasLimitUpdates(CustomerUpdateRequest request) {
@@ -106,14 +103,5 @@ public class CustomerServiceImpl implements CustomerService {
             iban = Iban.random(CountryCode.NL).toString();
         } while (accountRepository.existsById(iban));
         return iban;
-    }
-
-    private User findCustomerOrThrow(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new CustomerNotFoundException(id));
-        if (user.getRole() != User.Role.CUSTOMER) {
-            throw new CustomerNotFoundException(id);
-        }
-        return user;
     }
 }

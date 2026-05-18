@@ -3,7 +3,10 @@ package com.banking.controller;
 import com.banking.dto.CustomerResponse;
 import com.banking.dto.CustomerUpdateRequest;
 import com.banking.model.User.UserStatus;
-import com.banking.service.interfaces.CustomerService;
+import com.banking.service.interfaces.ICustomerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -12,14 +15,17 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/customers")
+@Tag(name = "Customers", description = "Customer management endpoints")
+@SecurityRequirement(name = "bearerAuth")
 public class CustomerController {
 
-    private final CustomerService customerService;
+    private final ICustomerService customerService;
 
-    public CustomerController(CustomerService customerService) {
+    public CustomerController(ICustomerService customerService) {
         this.customerService = customerService;
     }
 
+    @Operation(summary = "Get filtered customers for employees")
     @GetMapping
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<Page<CustomerResponse>> getCustomers(
@@ -30,6 +36,7 @@ public class CustomerController {
         return ResponseEntity.ok(customerService.findCustomers(userStatus, search, pageable));
     }
 
+    @Operation(summary = "Update one customer")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<CustomerResponse> updateCustomer(

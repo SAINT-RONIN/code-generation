@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /** Seeds the database with a default employee and test customer on first startup. */
 @Component
@@ -72,14 +73,14 @@ public class DataInitializer implements CommandLineRunner {
         customer.setStatus(UserStatus.ACTIVE);
         customer.setPin(passwordEncoder.encode("1234"));
         customer = userRepository.save(customer);
-        accountRepository.save(buildAccount(generateUniqueIban(), AccountType.CHECKING, new BigDecimal("2000.00"), customer));
-        accountRepository.save(buildAccount(generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("500.00"), customer));
+        accountRepository.saveAll(List.of(
+                buildAccount(generateUniqueIban(), AccountType.CHECKING, new BigDecimal("2000.00"), customer),
+                buildAccount(generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("500.00"), customer)
+        ));
     }
 
     private Account buildAccount(String iban, AccountType type, BigDecimal dailyLimit, User customer) {
-        Account account = new Account(iban, type, BigDecimal.ZERO, dailyLimit, customer);
-        account.setBalance(new BigDecimal("1500.00"));
-        return account;
+        return new Account(iban, type, new BigDecimal("1500.00"), BigDecimal.ZERO, dailyLimit, customer);
     }
 
     private String generateUniqueIban() {

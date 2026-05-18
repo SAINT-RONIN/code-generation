@@ -1,17 +1,10 @@
 package com.banking.dto;
 
-import com.banking.model.Account;
-import com.banking.model.Account.AccountType;
-import com.banking.model.User;
+import io.swagger.v3.oas.annotations.media.Schema;
 
-public record IbanSearchResponse(String firstName, String lastName, String checkingIban) {
-
-    public static IbanSearchResponse from(User customer) {
-        String iban = customer.getAccounts().stream()
-                .filter(a -> a.getAccountType() == AccountType.CHECKING)
-                .map(Account::getIban)
-                .findFirst()
-                .orElseThrow();
-        return new IbanSearchResponse(customer.getFirstName(), customer.getLastName(), iban);
-    }
-}
+public record IbanSearchResponse(
+        String firstName,
+        String lastName,
+        @Schema(example = "NL91ABNA0417164300")
+        String checkingIban
+) {}

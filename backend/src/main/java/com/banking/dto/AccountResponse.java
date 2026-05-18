@@ -1,31 +1,28 @@
 package com.banking.dto;
 
-import com.banking.model.Account;
-import com.banking.model.User;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 
 public record AccountResponse(
+        @Schema(example = "NL91ABNA0417164300")
         String iban,
+        @Schema(example = "CHECKING")
         String accountType,
+        @Schema(example = "1500.00")
         BigDecimal balance,
+        @Schema(example = "-500.00")
         BigDecimal absoluteLimit,
+        @Schema(example = "2000.00")
         BigDecimal dailyLimit,
         boolean active,
         UserSummary user
 ) {
-    public record UserSummary(Long id, String firstName, String lastName, String email) {}
-
-    public static AccountResponse from(Account account) {
-        User owner = account.getUser();
-        return new AccountResponse(
-                account.getIban(),
-                account.getAccountType().name(),
-                account.getBalance(),
-                account.getAbsoluteLimit(),
-                account.getDailyLimit(),
-                account.isActive(),
-                new UserSummary(owner.getId(), owner.getFirstName(), owner.getLastName(), owner.getEmail())
-        );
-    }
+    public record UserSummary(
+            Long id,
+            String firstName,
+            String lastName,
+            @Schema(example = "john@example.com")
+            String email
+    ) {}
 }

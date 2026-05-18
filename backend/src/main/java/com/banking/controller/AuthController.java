@@ -4,41 +4,49 @@ import com.banking.dto.LoginRequest;
 import com.banking.dto.LoginResponse;
 import com.banking.dto.RegisterRequest;
 import com.banking.dto.VerifyPinRequest;
-import com.banking.service.interfaces.AuthService;
+import com.banking.security.AuthenticatedUser;
+import com.banking.service.interfaces.IAuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Auth", description = "Authentication and registration endpoints")
 public class AuthController {
 
-    private final AuthService authService;
+    private final IAuthService authService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(IAuthService authService) {
         this.authService = authService;
     }
 
+    @Operation(summary = "Register a new customer")
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body("Registration successful. Await employee approval.");
     }
 
+    @Operation(summary = "Log in and get a JWT token")
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    @Operation(summary = "Verify the signed-in user's PIN")
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/verify-pin")
     public ResponseEntity<Map<String, String>> verifyPin(@Valid @RequestBody VerifyPinRequest request,
-                                                          @AuthenticationPrincipal UserDetails caller) {
-        boolean valid = authService.verifyPin(caller.getUsername(), request.pin());
+                                                          @AuthenticationPrincipal AuthenticatedUser caller) {
+        boolean valid = authService.verifyPin(caller.getId(), request.pin());
         if (valid) {
             return ResponseEntity.ok(Map.of("message", "PIN verified"));
         }

@@ -25,10 +25,11 @@ public class JwtUtil {
         this.expirationMs = expirationMs;
     }
 
-    /** @return a signed JWT containing the caller's email as subject and role as a claim */
-    public String generateToken(String email, String role) {
+    /** @return a signed JWT containing the caller's email as subject plus stable identity claims */
+    public String generateToken(Long userId, String email, String role) {
         return Jwts.builder()
                 .subject(email)
+                .claim("userId", userId)
                 .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
@@ -39,6 +40,11 @@ public class JwtUtil {
     /** @return the email (subject) embedded in the token */
     public String extractEmailFromToken(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    /** @return the internal user id embedded in the token */
+    public Long extractUserIdFromToken(String token) {
+        return parseClaims(token).get("userId", Long.class);
     }
 
     /** @return true if the token has a valid signature and has not expired */
