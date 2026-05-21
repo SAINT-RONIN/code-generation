@@ -27,10 +27,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT DISTINCT new com.banking.dto.IbanSearchResponse(u.firstName, u.lastName, a.iban) " +
            "FROM User u JOIN u.accounts a " +
            "WHERE u.role = 'CUSTOMER' " +
+           "AND u.status = 'ACTIVE' " +
            "AND a.accountType = com.banking.model.Account$AccountType.CHECKING " +
-           "AND LOWER(u.firstName) LIKE LOWER(CONCAT('%', :firstName, '%')) " +
-           "AND LOWER(u.lastName) LIKE LOWER(CONCAT('%', :lastName, '%'))")
-    List<IbanSearchResponse> searchApprovedCustomersByName(@Param("firstName") String firstName, @Param("lastName") String lastName);
+           "AND u.id <> :excludeUserId " +
+           "AND (" +
+           "  (LOWER(u.firstName) LIKE LOWER(CONCAT('%', :firstName, '%')) " +
+           "   AND LOWER(u.lastName) LIKE LOWER(CONCAT('%', :lastName, '%'))) " +
+           "  OR (:iban IS NOT NULL AND LOWER(a.iban) LIKE LOWER(CONCAT('%', :iban, '%'))))")
+    List<IbanSearchResponse> searchApprovedCustomersByName(
+            @Param("firstName") String firstName,
+            @Param("lastName") String lastName,
+            @Param("iban") String iban,
+            @Param("excludeUserId") Long excludeUserId);
 
     @Query("SELECT u FROM User u WHERE u.role = 'CUSTOMER' " +
            "AND (:status IS NULL OR u.status = :status) " +

@@ -36,6 +36,9 @@ function fillDemo(role) {
   if (role === 'customer') {
     email.value = 'customer@test.com'
     password.value = 'customer123'
+  } else if (role === 'customer2') {
+    email.value = 'customer2@test.com'
+    password.value = 'customer123'
   } else {
     email.value = 'employee@bank.com'
     password.value = 'employee123'
@@ -128,6 +131,12 @@ function fillDemo(role) {
               :style="{ background: 'var(--surface-2)', color: 'var(--ink-2)' }"
               @click="fillDemo('customer')"
             >Customer</button>
+            <button
+              type="button"
+              class="text-xs px-3 py-1.5 rounded-lg font-medium lift"
+              :style="{ background: 'var(--surface-2)', color: 'var(--ink-2)' }"
+              @click="fillDemo('customer2')"
+            >Customer 2</button>
             <button
               type="button"
               class="text-xs px-3 py-1.5 rounded-lg font-medium lift"

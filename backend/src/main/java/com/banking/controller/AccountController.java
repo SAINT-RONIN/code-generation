@@ -48,13 +48,15 @@ public class AccountController {
         return ResponseEntity.ok(accountService.findAllAccounts(ownerEmail, active, pageable));
     }
 
-    // Search customer checking accounts by first and last name.
-    @Operation(summary = "Search customer checking accounts by name")
+    // Search customer checking accounts by name or IBAN, excluding the caller's own accounts.
+    @Operation(summary = "Search customer checking accounts by name or IBAN")
     @GetMapping("/search")
     public ResponseEntity<List<IbanSearchResponse>> searchByName(
             @RequestParam String firstName,
-            @RequestParam String lastName) {
-        return ResponseEntity.ok(accountService.searchCustomerCheckingIbansByName(firstName, lastName));
+            @RequestParam String lastName,
+            @RequestParam(required = false, defaultValue = "") String iban,
+            @AuthenticationPrincipal AuthenticatedUser caller) {
+        return ResponseEntity.ok(accountService.searchCustomerCheckingIbansByName(firstName, lastName, iban, caller.getId()));
     }
 
     // Update the selected fields of one account.

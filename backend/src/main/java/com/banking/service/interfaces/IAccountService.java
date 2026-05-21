@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 public interface IAccountService {
-    List<IbanSearchResponse> searchCustomerCheckingIbansByName(String firstName, String lastName);
+    List<IbanSearchResponse> searchCustomerCheckingIbansByName(String firstName, String lastName, String iban, Long excludeUserId);
     List<AccountResponse> findMyAccounts(Long userId);
     Page<AccountResponse> findAllAccounts(String ownerEmail, Boolean active, Pageable pageable);
     AccountResponse updateAccount(String iban, AccountUpdateRequest request);

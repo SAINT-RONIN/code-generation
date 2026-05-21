@@ -36,6 +36,12 @@ public class DataInitializer implements CommandLineRunner {
     @Value("${seed.customer.password}")
     private String customerPassword;
 
+    @Value("${seed.customer2.email}")
+    private String customer2Email;
+
+    @Value("${seed.customer2.password}")
+    private String customer2Password;
+
     public DataInitializer(UserRepository userRepository, AccountRepository accountRepository,
                             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
@@ -47,6 +53,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         if (!userRepository.existsByEmail(employeeEmail)) seedEmployee();
         if (!userRepository.existsByEmail(customerEmail)) seedTestCustomer();
+        if (!userRepository.existsByEmail(customer2Email)) seedTestCustomer2();
     }
 
     private void seedEmployee() {
@@ -68,6 +75,23 @@ public class DataInitializer implements CommandLineRunner {
                 customerEmail,
                 passwordEncoder.encode(customerPassword),
                 "123456789", "0612345678",
+                User.Role.CUSTOMER
+        );
+        customer.setStatus(UserStatus.ACTIVE);
+        customer.setPin(passwordEncoder.encode("1234"));
+        customer = userRepository.save(customer);
+        accountRepository.saveAll(List.of(
+                buildAccount(generateUniqueIban(), AccountType.CHECKING, new BigDecimal("2000.00"), customer),
+                buildAccount(generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("500.00"), customer)
+        ));
+    }
+
+    private void seedTestCustomer2() {
+        User customer = new User(
+                "Test", "Customer2",
+                customer2Email,
+                passwordEncoder.encode(customer2Password),
+                "987654321", "0687654321",
                 User.Role.CUSTOMER
         );
         customer.setStatus(UserStatus.ACTIVE);

@@ -32,8 +32,9 @@ public class AccountService implements IAccountService {
 
     // Find customer checking accounts by person name for transfers/search.
     @Override
-    public List<IbanSearchResponse> searchCustomerCheckingIbansByName(String firstName, String lastName) {
-        return userRepository.searchApprovedCustomersByName(firstName, lastName);
+    public List<IbanSearchResponse> searchCustomerCheckingIbansByName(String firstName, String lastName, String iban, Long excludeUserId) {
+        String ibanParam = (iban == null || iban.isBlank()) ? null : iban;
+        return userRepository.searchApprovedCustomersByName(firstName, lastName, ibanParam, excludeUserId);
     }
 
     // Get the signed-in user's active accounts.

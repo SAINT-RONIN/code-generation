@@ -58,7 +58,8 @@ async function onSearchInput() {
       const parts = recipientSearch.value.trim().split(/\s+/)
       const firstName = parts[0]
       const lastName = parts.slice(1).join(' ')
-      const { data } = await searchByName(firstName, lastName)
+      const iban = recipientSearch.value.trim().replace(/\s+/g, '')
+      const { data } = await searchByName(firstName, lastName, iban)
       recipientResults.value = data
     } catch {
       recipientResults.value = []
