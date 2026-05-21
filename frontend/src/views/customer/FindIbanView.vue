@@ -26,7 +26,7 @@ async function onInput() {
     try {
       const parts = query.value.trim().split(/\s+/)
       const firstName = parts[0]
-      const lastName = parts.slice(1).join(' ') || ' '
+      const lastName = parts.slice(1).join(' ')
       const { data } = await searchByName(firstName, lastName)
       results.value = data
     } catch {

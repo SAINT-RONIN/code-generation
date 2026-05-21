@@ -52,7 +52,9 @@ public class AuthService implements IAuthService {
     @Override
     public boolean verifyPin(Long userId, String pin) {
         User user = userRepository.findRequiredById(userId);
-        if (user.getPin() == null) return false;
+        if (user.getPin() == null) {
+            return false;
+        }
         return passwordEncoder.matches(pin, user.getPin());
     }
 

@@ -57,7 +57,7 @@ async function onSearchInput() {
     try {
       const parts = recipientSearch.value.trim().split(/\s+/)
       const firstName = parts[0]
-      const lastName = parts.slice(1).join(' ') || ' '
+      const lastName = parts.slice(1).join(' ')
       const { data } = await searchByName(firstName, lastName)
       recipientResults.value = data
     } catch {
