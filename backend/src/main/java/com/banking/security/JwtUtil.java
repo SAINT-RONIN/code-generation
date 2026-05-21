@@ -26,39 +26,18 @@ public class JwtUtil {
     }
 
     /** @return a signed JWT containing the caller's email as subject plus stable identity claims */
-    public String generateToken(Long userId, String email, String role) {
+    public String generateToken(Long userId, String email) {
         return Jwts.builder()
                 .subject(email)
                 .claim("userId", userId)
-                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(signingKey)
                 .compact();
     }
 
-    /** @return the email (subject) embedded in the token */
-    public String extractEmailFromToken(String token) {
-        return parseClaims(token).getSubject();
-    }
-
-    /** @return the internal user id embedded in the token */
-    public Long extractUserIdFromToken(String token) {
-        return parseClaims(token).get("userId", Long.class);
-    }
-
-    /** @return true if the token has a valid signature and has not expired */
-    public boolean isTokenValid(String token) {
-        try {
-            parseClaims(token);
-            return true;
-        } catch (JwtException e) {
-            // Covers expired, malformed, and tampered tokens
-            return false;
-        }
-    }
-
-    private Claims parseClaims(String token) {
+    // Read all claims from the signed token after verifying it.
+    public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey)
                 .build()

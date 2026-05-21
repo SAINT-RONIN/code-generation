@@ -39,16 +39,19 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
+    // Hash passwords before storing or checking them.
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // Expose Spring's authentication manager for the auth flow.
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
+    // Allow the frontend app to call this API from the browser.
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -61,6 +64,7 @@ public class SecurityConfig {
         return source;
     }
 
+    // Apply JWT security rules and register the authentication filter.
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http

@@ -14,10 +14,12 @@ public class AuthenticatedUser extends org.springframework.security.core.userdet
         this.id = id;
     }
 
+    // Return the internal user id stored in the authenticated principal.
     public Long getId() {
         return id;
     }
 
+    // Return the user's email used as the Spring Security username.
     public String getEmail() {
         return getUsername();
     }

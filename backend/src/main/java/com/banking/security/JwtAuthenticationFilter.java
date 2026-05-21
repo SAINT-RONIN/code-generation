@@ -1,5 +1,7 @@
 package com.banking.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,12 +28,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
+    // Read the token from the request and sign the user in when it is valid.
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = extractBearerToken(request);
-        if (token != null && jwtUtil.isTokenValid(token)) {
-            setAuthenticationFromToken(token, request);
+        if (token != null) {
+            try {
+                setAuthenticationFromToken(jwtUtil.parseClaims(token), request);
+            } catch (JwtException ignored) {
+                // Invalid tokens are ignored and the request continues as unauthenticated.
+            }
         }
         filterChain.doFilter(request, response);
     }
@@ -45,9 +52,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private void setAuthenticationFromToken(String token, HttpServletRequest request) {
-        String email = jwtUtil.extractEmailFromToken(token);
-        Long userId = jwtUtil.extractUserIdFromToken(token);
+    // Build the authenticated user and put it into the Spring security context.
+    private void setAuthenticationFromToken(Claims claims, HttpServletRequest request) {
+        String email = claims.getSubject();
+        Long userId = claims.get("userId", Long.class);
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
         if (!(userDetails instanceof AuthenticatedUser authenticatedUser) || !authenticatedUser.getId().equals(userId)) {
             return;
