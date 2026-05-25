@@ -5,6 +5,8 @@ import com.banking.dto.CustomerUpdateRequest;
 import com.banking.model.User.UserStatus;
 import com.banking.service.interfaces.ICustomerService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -26,6 +28,10 @@ public class CustomerController {
     }
 
     @Operation(summary = "Get filtered customers for employees")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Customers retrieved"),
+            @ApiResponse(responseCode = "403", description = "Not an employee")
+    })
     @GetMapping
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<Page<CustomerResponse>> getCustomers(
@@ -37,6 +43,11 @@ public class CustomerController {
     }
 
     @Operation(summary = "Update one customer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Customer updated"),
+            @ApiResponse(responseCode = "403", description = "Not an employee"),
+            @ApiResponse(responseCode = "404", description = "Customer not found")
+    })
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<CustomerResponse> updateCustomer(

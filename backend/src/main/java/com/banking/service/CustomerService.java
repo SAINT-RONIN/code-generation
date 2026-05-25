@@ -53,9 +53,11 @@ public class CustomerService implements ICustomerService {
         if (newStatus == UserStatus.ACTIVE && current == UserStatus.PENDING) {
             approveCustomer(customer, request);
         } else if (newStatus == UserStatus.CLOSED) {
-            closeCustomer(customer);
+            updateAccountStatus(customer.getId(), false);
+            customer.setStatus(UserStatus.CLOSED);
         } else if (newStatus == UserStatus.ACTIVE && current == UserStatus.CLOSED) {
-            reopenCustomer(customer);
+            updateAccountStatus(customer.getId(), true);
+            customer.setStatus(UserStatus.ACTIVE);
         } else {
             customer.setStatus(newStatus);
         }
@@ -64,25 +66,15 @@ public class CustomerService implements ICustomerService {
     private void approveCustomer(User customer, CustomerUpdateRequest request) {
         BigDecimal daily    = request.dailyLimit()    != null ? request.dailyLimit()    : BigDecimal.valueOf(2000);
         BigDecimal absolute = request.absoluteLimit() != null ? request.absoluteLimit() : BigDecimal.ZERO;
-        createBothAccounts(customer, daily, absolute);
-        customer.setStatus(UserStatus.ACTIVE);
-    }
-
-    private void createBothAccounts(User customer, BigDecimal daily, BigDecimal absolute) {
         accountRepository.saveAll(List.of(
-                buildAccount(AccountType.CHECKING, daily, absolute, customer),
-                buildAccount(AccountType.SAVINGS, daily, absolute, customer)
+                new Account(generateUniqueIban(), AccountType.CHECKING, absolute, daily, customer),
+                new Account(generateUniqueIban(), AccountType.SAVINGS, absolute, daily, customer)
         ));
-    }
-
-    private void closeCustomer(User customer) {
-        accountRepository.updateActiveByUserId(customer.getId(), false);
-        customer.setStatus(UserStatus.CLOSED);
-    }
-
-    private void reopenCustomer(User customer) {
-        accountRepository.updateActiveByUserId(customer.getId(), true);
         customer.setStatus(UserStatus.ACTIVE);
+    }
+
+    private void updateAccountStatus(Long userId, boolean active) {
+        accountRepository.updateActiveByUserId(userId, active);
     }
 
     private void applyLimitUpdates(User customer, CustomerUpdateRequest request) {
@@ -91,10 +83,6 @@ public class CustomerService implements ICustomerService {
 
     private boolean hasLimitUpdates(CustomerUpdateRequest request) {
         return request.dailyLimit() != null || request.absoluteLimit() != null;
-    }
-
-    private Account buildAccount(AccountType type, BigDecimal dailyLimit, BigDecimal absoluteLimit, User customer) {
-        return new Account(generateUniqueIban(), type, absoluteLimit, dailyLimit, customer);
     }
 
     private String generateUniqueIban() {

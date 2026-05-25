@@ -50,12 +50,11 @@ public class AuthService implements IAuthService {
     }
 
     @Override
-    public boolean verifyPin(Long userId, String pin) {
+    public void verifyPin(Long userId, String pin) {
         User user = userRepository.findRequiredById(userId);
-        if (user.getPin() == null) {
-            return false;
+        if (user.getPin() == null || !passwordEncoder.matches(pin, user.getPin())) {
+            throw new BadCredentialsException("Incorrect PIN");
         }
-        return passwordEncoder.matches(pin, user.getPin());
     }
 
     private void verifyPassword(String rawPassword, String encodedPassword) {

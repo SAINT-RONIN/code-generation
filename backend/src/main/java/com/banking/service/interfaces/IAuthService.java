@@ -8,5 +8,5 @@ import com.banking.model.User;
 public interface IAuthService {
     User register(RegisterRequest request);
     LoginResponse login(LoginRequest request);
-    boolean verifyPin(Long userId, String pin);
+    void verifyPin(Long userId, String pin);
 }

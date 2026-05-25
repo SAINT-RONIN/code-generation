@@ -4,6 +4,8 @@ import com.banking.dto.*;
 import com.banking.security.AuthenticatedUser;
 import com.banking.service.interfaces.ITransactionService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +29,13 @@ public class TransactionController {
     }
 
     @Operation(summary = "Transfer money between accounts")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Transfer completed"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "403", description = "Caller does not own the source account"),
+            @ApiResponse(responseCode = "404", description = "Account not found"),
+            @ApiResponse(responseCode = "422", description = "Insufficient funds, daily limit exceeded, or invalid transfer")
+    })
     @PostMapping
     public ResponseEntity<TransactionResponse> transfer(@Valid @RequestBody TransferRequest request,
                                                         @AuthenticationPrincipal AuthenticatedUser caller) {
@@ -36,7 +45,13 @@ public class TransactionController {
     }
 
     @Operation(summary = "Deposit cash into one account")
-    @PostMapping("/deposit")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Deposit completed"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "403", description = "Caller does not own the account"),
+            @ApiResponse(responseCode = "404", description = "Account not found")
+    })
+    @PostMapping("/deposits")
     public ResponseEntity<TransactionResponse> deposit(@Valid @RequestBody AtmRequest request,
                                                        @AuthenticationPrincipal AuthenticatedUser caller) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -44,7 +59,14 @@ public class TransactionController {
     }
 
     @Operation(summary = "Withdraw cash from one account")
-    @PostMapping("/withdrawal")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Withdrawal completed"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "403", description = "Caller does not own the account"),
+            @ApiResponse(responseCode = "404", description = "Account not found"),
+            @ApiResponse(responseCode = "422", description = "Insufficient funds or daily limit exceeded")
+    })
+    @PostMapping("/withdrawals")
     public ResponseEntity<TransactionResponse> withdrawal(@Valid @RequestBody AtmRequest request,
                                                           @AuthenticationPrincipal AuthenticatedUser caller) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -52,6 +74,7 @@ public class TransactionController {
     }
 
     @Operation(summary = "Get filtered transaction history")
+    @ApiResponse(responseCode = "200", description = "Transactions retrieved")
     @GetMapping
     public ResponseEntity<Page<TransactionResponse>> getTransactions(@ModelAttribute TransactionFilter filter,
                                                                       Pageable pageable,

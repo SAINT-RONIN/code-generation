@@ -7,6 +7,8 @@ import com.banking.dto.VerifyPinRequest;
 import com.banking.security.AuthenticatedUser;
 import com.banking.service.interfaces.IAuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,6 +31,11 @@ public class AuthController {
     }
 
     @Operation(summary = "Register a new customer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Registration successful"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "409", description = "Email already in use")
+    })
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
@@ -36,20 +43,27 @@ public class AuthController {
     }
 
     @Operation(summary = "Log in and get a JWT token")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Login successful"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials or account inactive")
+    })
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
     @Operation(summary = "Verify the signed-in user's PIN")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "PIN verified"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "401", description = "Incorrect PIN")
+    })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/verify-pin")
     public ResponseEntity<Map<String, String>> verifyPin(@Valid @RequestBody VerifyPinRequest request,
                                                           @AuthenticationPrincipal AuthenticatedUser caller) {
-        boolean valid = authService.verifyPin(caller.getId(), request.pin());
-        if (valid) {
-            return ResponseEntity.ok(Map.of("message", "PIN verified"));
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Incorrect PIN"));
+        authService.verifyPin(caller.getId(), request.pin());
+        return ResponseEntity.ok(Map.of("message", "PIN verified"));
     }
 }

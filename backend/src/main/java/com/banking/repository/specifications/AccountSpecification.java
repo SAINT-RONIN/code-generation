@@ -1,4 +1,4 @@
-package com.banking.util;
+package com.banking.repository.specifications;
 
 import com.banking.model.Account;
 import com.banking.model.User;

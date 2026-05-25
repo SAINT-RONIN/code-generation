@@ -8,7 +8,7 @@ import com.banking.model.Account;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
 import com.banking.service.interfaces.IAccountService;
-import com.banking.util.AccountSpecification;
+import com.banking.repository.specifications.AccountSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;

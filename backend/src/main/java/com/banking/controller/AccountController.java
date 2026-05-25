@@ -6,6 +6,8 @@ import com.banking.dto.IbanSearchResponse;
 import com.banking.security.AuthenticatedUser;
 import com.banking.service.interfaces.IAccountService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,15 +32,18 @@ public class AccountController {
         this.accountService = accountService;
     }
 
-    // Return the signed-in customer's own active accounts.
     @Operation(summary = "Get my active accounts")
+    @ApiResponse(responseCode = "200", description = "Accounts retrieved")
     @GetMapping("/me")
     public ResponseEntity<List<AccountResponse>> getMyAccounts(@AuthenticationPrincipal AuthenticatedUser caller) {
         return ResponseEntity.ok(accountService.findMyAccounts(caller.getId()));
     }
 
-    // Return a filtered page of accounts for employee management screens.
     @Operation(summary = "Get filtered accounts for employees")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Accounts retrieved"),
+            @ApiResponse(responseCode = "403", description = "Not an employee")
+    })
     @GetMapping
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<Page<AccountResponse>> getAllAccounts(
@@ -48,9 +53,9 @@ public class AccountController {
         return ResponseEntity.ok(accountService.findAllAccounts(ownerEmail, active, pageable));
     }
 
-    // Search customer checking accounts by name or IBAN, excluding the caller's own accounts.
     @Operation(summary = "Search customer checking accounts by name or IBAN")
-    @GetMapping("/search")
+    @ApiResponse(responseCode = "200", description = "Matching accounts returned")
+    @GetMapping("/checking")
     public ResponseEntity<List<IbanSearchResponse>> searchByName(
             @RequestParam String firstName,
             @RequestParam String lastName,
@@ -59,8 +64,12 @@ public class AccountController {
         return ResponseEntity.ok(accountService.searchCustomerCheckingIbansByName(firstName, lastName, iban, caller.getId()));
     }
 
-    // Update the selected fields of one account.
     @Operation(summary = "Update one account")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Account updated"),
+            @ApiResponse(responseCode = "403", description = "Not an employee"),
+            @ApiResponse(responseCode = "404", description = "Account not found")
+    })
     @PutMapping("/{iban}")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<AccountResponse> updateAccount(
