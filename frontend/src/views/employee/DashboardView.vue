@@ -6,11 +6,9 @@ import EmployeeLayout from '../../components/EmployeeLayout.vue'
 import VPageHeader from '../../components/ui/VPageHeader.vue'
 import VCard from '../../components/ui/VCard.vue'
 import VPill from '../../components/ui/VPill.vue'
-
 import { getCustomers, getAllAccounts } from '../../services/employee'
 import { getTransactions } from '../../services/transactions'
-
-function eur(val) { return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0) }
+import { eur } from '../../utils/format'
 
 const pending = ref([])
 const recentTx = ref([])

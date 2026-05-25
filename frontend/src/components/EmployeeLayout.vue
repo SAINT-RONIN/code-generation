@@ -1,12 +1,13 @@
 <script setup>
 import { ref } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 import { Home, Users, CheckSquare, Send, AlignLeft, Bell, Settings, LogOut } from 'lucide-vue-next'
 import IconLogo from './icons/IconLogo.vue'
 import VPill from './ui/VPill.vue'
+import { useAuth } from '../composables/useAuth'
 
 const route = useRoute()
-const router = useRouter()
+const { logout } = useAuth()
 const showUserMenu = ref(false)
 
 const navItems = [
@@ -22,11 +23,6 @@ function isActive(to) {
   return route.path.startsWith(to)
 }
 
-function logout() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
-  router.push('/login')
-}
 </script>
 
 <template>

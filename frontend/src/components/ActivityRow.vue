@@ -1,16 +1,13 @@
 <script setup>
 import { computed } from 'vue'
 import { ArrowLeftRight, Send, Banknote } from 'lucide-vue-next'
+import { eur } from '../utils/format'
 
 const props = defineProps({
   tx: { type: Object, required: true },
   myIbans: { type: Array, default: () => [] },
   masked: { type: Boolean, default: false },
 })
-
-function eur(val) {
-  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0)
-}
 
 const isCredit = computed(() => props.myIbans.some(iban => iban === props.tx.toIban))
 

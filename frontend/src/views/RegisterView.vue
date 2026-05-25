@@ -7,6 +7,7 @@ import IconLogo from '../components/icons/IconLogo.vue'
 import VField from '../components/ui/VField.vue'
 import VTextInput from '../components/ui/VTextInput.vue'
 import VBtn from '../components/ui/VBtn.vue'
+import { extractError } from '../utils/error'
 
 const router = useRouter()
 const error = ref('')
@@ -65,7 +66,7 @@ async function handleRegister() {
     })
     router.push('/pending-approval')
   } catch (e) {
-    error.value = e.response?.data?.error || 'Registration failed. Please try again.'
+    error.value = extractError(e, 'Registration failed. Please try again.')
   } finally {
     loading.value = false
   }

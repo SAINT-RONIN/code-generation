@@ -8,7 +8,8 @@ import VCard from '../../components/ui/VCard.vue'
 import VField from '../../components/ui/VField.vue'
 import VTextInput from '../../components/ui/VTextInput.vue'
 import VBtn from '../../components/ui/VBtn.vue'
-function eur(val) { return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0) }
+import { eur } from '../../utils/format'
+import { extractError } from '../../utils/error'
 
 const accounts = ref([])
 const loadingAccounts = ref(true)
@@ -63,7 +64,7 @@ async function executeTransfer() {
     successData.value = res.data
     success.value = true
   } catch (e) {
-    error.value = e?.response?.data?.message || 'Transfer failed. Please check the details and try again.'
+    error.value = extractError(e, 'Transfer failed. Please check the details and try again.')
   } finally {
     loading.value = false
   }

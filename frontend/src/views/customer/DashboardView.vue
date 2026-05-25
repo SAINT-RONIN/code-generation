@@ -8,6 +8,7 @@ import VCard from '../../components/ui/VCard.vue'
 import CopyChip from '../../components/ui/CopyChip.vue'
 import { getMyAccounts } from '../../services/accounts'
 import { getTransactions } from '../../services/transactions'
+import { eur } from '../../utils/format'
 
 const accounts = ref([])
 const transactions = ref([])
@@ -21,10 +22,6 @@ const ownerName = computed(() => {
   if (!u) return 'there'
   return u.firstName || 'there'
 })
-
-function eur(val) {
-  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0)
-}
 
 const totalBalance = computed(() =>
   accounts.value.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0)

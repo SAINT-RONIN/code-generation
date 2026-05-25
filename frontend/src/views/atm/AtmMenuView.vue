@@ -1,15 +1,11 @@
 <script setup>
-import { useRouter, RouterLink } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import { ArrowUp, ArrowDown } from 'lucide-vue-next'
 import AtmShell from '../../components/AtmShell.vue'
+import { useAuth } from '../../composables/useAuth'
 
-const router = useRouter()
-
-function logout() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
-  router.push('/atm/login')
-}
+const { logout: authLogout } = useAuth()
+function logout() { authLogout('/atm/login') }
 </script>
 
 <template>

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getToken, getRole, ROLES } from '../composables/useAuth'
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -33,12 +34,12 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const token = localStorage.getItem('token')
-  const role = localStorage.getItem('role')
+  const token = getToken()
+  const role = getRole()
 
   if (to.meta.public) return true
   if (!token) return '/login'
-  if (to.meta.role && to.meta.role !== role) return role === 'EMPLOYEE' ? '/employee' : '/customer'
+  if (to.meta.role && to.meta.role !== role) return role === ROLES.EMPLOYEE ? '/employee' : '/customer'
   return true
 })
 

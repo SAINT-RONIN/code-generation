@@ -6,10 +6,7 @@ import VPageHeader from '../../components/ui/VPageHeader.vue'
 import VCard from '../../components/ui/VCard.vue'
 import CopyChip from '../../components/ui/CopyChip.vue'
 import { getMyAccounts } from '../../services/accounts'
-
-function eur(val) {
-  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0)
-}
+import { eur } from '../../utils/format'
 
 const accounts = ref([])
 const loading = ref(true)

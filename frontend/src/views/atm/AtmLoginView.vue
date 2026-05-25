@@ -4,6 +4,8 @@ import { useRouter, RouterLink } from 'vue-router'
 import AtmShell from '../../components/AtmShell.vue'
 import { login } from '../../services/auth'
 import { ArrowLeft } from 'lucide-vue-next'
+import { setAuth, ROLES } from '../../composables/useAuth'
+import { extractError } from '../../utils/error'
 
 const router = useRouter()
 const email = ref('')
@@ -17,16 +19,14 @@ async function handleLogin() {
   loading.value = true
   try {
     const { data } = await login(email.value, password.value)
-    if (data.role !== 'CUSTOMER') {
+    if (data.role !== ROLES.CUSTOMER) {
       error.value = 'ATM access is for customers only.'
       return
     }
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('role', data.role)
+    setAuth(data.token, data.role)
     router.push('/atm/menu')
   } catch (e) {
-    const msg = e?.response?.data?.error || e?.response?.data?.message
-    error.value = msg || 'Incorrect email or password.'
+    error.value = extractError(e, 'Incorrect email or password.')
   } finally {
     loading.value = false
   }

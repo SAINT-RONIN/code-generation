@@ -10,6 +10,7 @@ import VModal from '../../components/ui/VModal.vue'
 import VField from '../../components/ui/VField.vue'
 import VTextInput from '../../components/ui/VTextInput.vue'
 import { getCustomers, updateCustomer } from '../../services/employee'
+import { extractError } from '../../utils/error'
 
 const pending = ref([])
 const loading = ref(true)
@@ -56,7 +57,7 @@ async function handleApprove() {
     pending.value = pending.value.filter(p => p.id !== selected.value.id)
     approved.value = true
   } catch (e) {
-    error.value = e?.response?.data?.message || 'Approval failed. Please try again.'
+    error.value = extractError(e, 'Approval failed. Please try again.')
     selected.value = null
   } finally {
     approving.value = false

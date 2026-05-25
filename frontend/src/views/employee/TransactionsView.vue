@@ -7,10 +7,8 @@ import VCard from '../../components/ui/VCard.vue'
 import VBtn from '../../components/ui/VBtn.vue'
 import VPill from '../../components/ui/VPill.vue'
 import VModal from '../../components/ui/VModal.vue'
-
 import { getTransactions } from '../../services/transactions'
-
-function eur(val) { return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0) }
+import { eur } from '../../utils/format'
 
 const transactions = ref([])
 const totalElements = ref(0)

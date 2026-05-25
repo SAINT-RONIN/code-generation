@@ -5,8 +5,12 @@ import { atmWithdraw } from '../../services/transactions'
 import { getMyAccounts } from '../../services/accounts'
 import { Check, ArrowLeft } from 'lucide-vue-next'
 import AtmShell from '../../components/AtmShell.vue'
+import { useAuth } from '../../composables/useAuth'
+import { eur } from '../../utils/format'
+import { extractError } from '../../utils/error'
 
 const router = useRouter()
+const { logout: authLogout } = useAuth()
 const accounts = ref([])
 const selectedIban = ref('')
 const customAmount = ref('')
@@ -16,19 +20,13 @@ const done = ref(false)
 const withdrawnAmount = ref(0)
 const PRESETS = [20, 50, 100, 200]
 
-function eur(val) { return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0) }
-
 onMounted(async () => {
   const { data } = await getMyAccounts()
   accounts.value = data
   selectedIban.value = data.find(a => a.accountType === 'CHECKING')?.iban || data[0]?.iban || ''
 })
 
-function logout() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
-  router.push('/atm/login')
-}
+function logout() { authLogout('/atm/login') }
 
 async function doWithdraw(amount) {
   if (!amount || amount <= 0) { error.value = 'Select or enter a valid amount'; return }
@@ -41,7 +39,7 @@ async function doWithdraw(amount) {
     done.value = true
     setTimeout(() => router.push('/atm/menu'), 5000)
   } catch (e) {
-    error.value = e?.response?.data?.message || 'Withdrawal failed.'
+    error.value = extractError(e, 'Withdrawal failed.')
   } finally {
     loading.value = false
   }

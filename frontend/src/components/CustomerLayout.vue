@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 import { Home, Wallet, Send, AlignLeft, Search, Settings, Bell, LogOut } from 'lucide-vue-next'
 import IconLogo from './icons/IconLogo.vue'
 import { getMyAccounts } from '../services/accounts'
+import { useAuth } from '../composables/useAuth'
 
 const route = useRoute()
-const router = useRouter()
+const { logout } = useAuth()
 
 const ownerName = ref('')
 const showUserMenu = ref(false)
@@ -25,12 +26,6 @@ onMounted(async () => {
     ownerName.value = u ? `${u.firstName} ${u.lastName}` : ''
   } catch { /* ignore */ }
 })
-
-function logout() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
-  router.push('/login')
-}
 
 const navItems = [
   { label: 'Overview',  to: '/customer',              icon: Home },

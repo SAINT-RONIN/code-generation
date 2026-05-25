@@ -7,9 +7,9 @@ import VCard from '../../components/ui/VCard.vue'
 import ActivityRow from '../../components/ActivityRow.vue'
 import VModal from '../../components/ui/VModal.vue'
 import VBtn from '../../components/ui/VBtn.vue'
-function eur(val) { return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0) }
 import { getMyAccounts } from '../../services/accounts'
 import { getTransactions } from '../../services/transactions'
+import { eur } from '../../utils/format'
 
 const accounts = ref([])
 const myIbans = computed(() => accounts.value.map(a => a.iban))

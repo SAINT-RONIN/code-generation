@@ -13,6 +13,8 @@ import CopyChip from '../../components/ui/CopyChip.vue'
 import ActivityRow from '../../components/ActivityRow.vue'
 import { getAllAccounts, updateAccount, updateCustomer } from '../../services/employee'
 import { getTransactions } from '../../services/transactions'
+import { eur } from '../../utils/format'
+import { extractError } from '../../utils/error'
 
 const route = useRoute()
 const customerId = Number(route.params.id)
@@ -29,10 +31,6 @@ const closing = ref(false)
 const editLimits = ref({ daily: '', absolute: '' })
 const savingLimits = ref(false)
 const toast = ref('')
-
-function eur(val) {
-  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0)
-}
 
 const primary = computed(() => accounts.value[0] ?? null)
 const allIbans = computed(() => accounts.value.map(a => a.iban))
@@ -80,8 +78,7 @@ async function saveLimits() {
     toast.value = 'Limits updated'
     setTimeout(() => { toast.value = '' }, 2500)
   } catch (e) {
-    const msg = e?.response?.data?.message || e?.response?.data || 'Failed to save limits'
-    toast.value = typeof msg === 'string' ? msg : 'Failed to save limits'
+    toast.value = extractError(e, 'Failed to save limits')
     setTimeout(() => { toast.value = '' }, 3000)
   } finally { savingLimits.value = false }
 }

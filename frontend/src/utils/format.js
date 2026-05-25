@@ -5,8 +5,6 @@ export function fmtEUR(n, opts = {}) {
   return (sign ? (n >= 0 ? '+' : '−') : '') + '€ ' + s
 }
 
-export function a11yEUR(n) {
-  const whole = Math.floor(Math.abs(n))
-  const cents = Math.round((Math.abs(n) - whole) * 100)
-  return `${n < 0 ? 'minus ' : ''}${whole} euros and ${cents} cents`
+export function eur(val) {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0)
 }

@@ -7,6 +7,8 @@ import IconLogo from '../components/icons/IconLogo.vue'
 import VField from '../components/ui/VField.vue'
 import VTextInput from '../components/ui/VTextInput.vue'
 import VBtn from '../components/ui/VBtn.vue'
+import { setAuth, ROLES } from '../composables/useAuth'
+import { extractError } from '../utils/error'
 
 const router = useRouter()
 const email = ref('')
@@ -21,12 +23,10 @@ async function handleLogin() {
   loading.value = true
   try {
     const { data } = await login(email.value, password.value)
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('role', data.role)
-    router.push(data.role === 'EMPLOYEE' ? '/employee' : '/customer')
+    setAuth(data.token, data.role)
+    router.push(data.role === ROLES.EMPLOYEE ? '/employee' : '/customer')
   } catch (e) {
-    const msg = e?.response?.data?.error
-    error.value = msg || 'Incorrect email or password.'
+    error.value = extractError(e, 'Incorrect email or password.')
   } finally {
     loading.value = false
   }

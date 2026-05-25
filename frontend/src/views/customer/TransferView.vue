@@ -2,8 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { transfer } from '../../services/transactions'
-import { getMyAccounts } from '../../services/accounts'
-import { searchByName } from '../../services/accounts'
+import { getMyAccounts, searchByName } from '../../services/accounts'
 import { Check, ArrowDown } from 'lucide-vue-next'
 import CustomerLayout from '../../components/CustomerLayout.vue'
 import VPageHeader from '../../components/ui/VPageHeader.vue'
@@ -11,7 +10,8 @@ import VCard from '../../components/ui/VCard.vue'
 import VField from '../../components/ui/VField.vue'
 import VTextInput from '../../components/ui/VTextInput.vue'
 import VBtn from '../../components/ui/VBtn.vue'
-function eur(val) { return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0) }
+import { eur } from '../../utils/format'
+import { extractError } from '../../utils/error'
 
 const route = useRoute()
 const mode = computed(() => route.query.mode === 'own' ? 'own' : 'other')
@@ -102,7 +102,7 @@ async function confirmTransfer() {
     await refreshAccounts()
     step.value = 3
   } catch (e) {
-    error.value = e?.response?.data?.message || 'Transfer failed. Please try again.'
+    error.value = extractError(e, 'Transfer failed. Please try again.')
     step.value = 1
   } finally {
     loading.value = false

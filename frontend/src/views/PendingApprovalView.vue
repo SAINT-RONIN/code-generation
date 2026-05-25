@@ -1,18 +1,11 @@
 <script setup>
-import { useRouter } from 'vue-router'
 import { Clock } from 'lucide-vue-next'
 import IconLogo from '../components/icons/IconLogo.vue'
 import VBtn from '../components/ui/VBtn.vue'
 import VPill from '../components/ui/VPill.vue'
+import { useAuth } from '../composables/useAuth'
 
-const router = useRouter()
-const name = localStorage.getItem('firstName') || 'there'
-
-function logout() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
-  router.push('/login')
-}
+const { logout } = useAuth()
 </script>
 
 <template>
@@ -33,7 +26,7 @@ function logout() {
       </div>
 
       <h1 class="font-display mb-3" style="font-size: 44px; line-height: 1.05; font-weight: 400;" :style="{ color: 'var(--ink)' }">
-        Thanks for joining, {{ name }}.
+        Thanks for joining.
       </h1>
 
       <p class="text-sm leading-relaxed mb-6" :style="{ color: 'var(--ink-2)' }">
