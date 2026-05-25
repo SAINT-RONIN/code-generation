@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/transactions")
-@Tag(name = "Transactions", description = "Transfer, cash, and transaction history endpoints")
+@Tag(name = "Transactions", description = "Transaction endpoints")
 @SecurityRequirement(name = "bearerAuth")
 public class TransactionController {
 
@@ -28,49 +28,20 @@ public class TransactionController {
         this.transactionService = transactionService;
     }
 
-    @Operation(summary = "Transfer money between accounts")
+    @Operation(summary = "Create a transaction (transfer, deposit, or withdrawal)")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Transfer completed"),
+            @ApiResponse(responseCode = "201", description = "Transaction completed"),
             @ApiResponse(responseCode = "400", description = "Validation error"),
-            @ApiResponse(responseCode = "403", description = "Caller does not own the source account"),
+            @ApiResponse(responseCode = "403", description = "Caller does not own the account"),
             @ApiResponse(responseCode = "404", description = "Account not found"),
             @ApiResponse(responseCode = "422", description = "Insufficient funds, daily limit exceeded, or invalid transfer")
     })
     @PostMapping
-    public ResponseEntity<TransactionResponse> transfer(@Valid @RequestBody TransferRequest request,
-                                                        @AuthenticationPrincipal AuthenticatedUser caller) {
+    public ResponseEntity<TransactionResponse> createTransaction(@Valid @RequestBody TransactionRequest request,
+                                                                  @AuthenticationPrincipal AuthenticatedUser caller) {
         boolean isEmployee = isEmployee(caller);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(transactionService.transfer(request, caller.getId(), caller.getEmail(), isEmployee));
-    }
-
-    @Operation(summary = "Deposit cash into one account")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Deposit completed"),
-            @ApiResponse(responseCode = "400", description = "Validation error"),
-            @ApiResponse(responseCode = "403", description = "Caller does not own the account"),
-            @ApiResponse(responseCode = "404", description = "Account not found")
-    })
-    @PostMapping("/deposits")
-    public ResponseEntity<TransactionResponse> deposit(@Valid @RequestBody AtmRequest request,
-                                                       @AuthenticationPrincipal AuthenticatedUser caller) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(transactionService.deposit(request, caller.getId(), caller.getEmail()));
-    }
-
-    @Operation(summary = "Withdraw cash from one account")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Withdrawal completed"),
-            @ApiResponse(responseCode = "400", description = "Validation error"),
-            @ApiResponse(responseCode = "403", description = "Caller does not own the account"),
-            @ApiResponse(responseCode = "404", description = "Account not found"),
-            @ApiResponse(responseCode = "422", description = "Insufficient funds or daily limit exceeded")
-    })
-    @PostMapping("/withdrawals")
-    public ResponseEntity<TransactionResponse> withdrawal(@Valid @RequestBody AtmRequest request,
-                                                          @AuthenticationPrincipal AuthenticatedUser caller) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(transactionService.withdrawal(request, caller.getId(), caller.getEmail()));
+                .body(transactionService.createTransaction(request, caller.getId(), caller.getEmail(), isEmployee));
     }
 
     @Operation(summary = "Get filtered transaction history")

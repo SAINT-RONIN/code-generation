@@ -4,7 +4,7 @@ import com.banking.dto.TransactionFilter;
 import com.banking.dto.TransactionResponse;
 import com.banking.model.Transaction;
 import com.banking.model.Transaction.TransactionType;
-import com.banking.util.TransactionSpecification;
+import com.banking.repository.specifications.TransactionSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;

@@ -1,4 +1,4 @@
-package com.banking.util;
+package com.banking.repository.specifications;
 
 import com.banking.dto.TransactionFilter;
 import com.banking.model.Transaction;

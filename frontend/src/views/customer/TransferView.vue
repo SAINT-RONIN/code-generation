@@ -99,6 +99,7 @@ async function confirmTransfer() {
       amount: parseFloat(amount.value),
       description: note.value || 'Transfer',
     })
+    await refreshAccounts()
     step.value = 3
   } catch (e) {
     error.value = e?.response?.data?.message || 'Transfer failed. Please try again.'
@@ -108,7 +109,14 @@ async function confirmTransfer() {
   }
 }
 
-function reset() {
+async function refreshAccounts() {
+  try {
+    const { data } = await getMyAccounts()
+    accounts.value = data
+  } catch { /* keep stale data if refresh fails */ }
+}
+
+async function reset() {
   step.value = 1
   amount.value = ''
   note.value = ''
@@ -117,6 +125,7 @@ function reset() {
   recipientSearch.value = ''
   recipientResults.value = []
   error.value = ''
+  await refreshAccounts()
 }
 </script>
 

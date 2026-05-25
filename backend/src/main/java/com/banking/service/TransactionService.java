@@ -4,6 +4,7 @@ import com.banking.dto.*;
 import com.banking.exception.*;
 import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
+import com.banking.model.Transaction.TransactionType;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.TransactionRepository;
 import com.banking.service.interfaces.ITransactionService;
@@ -27,7 +28,17 @@ public class TransactionService implements ITransactionService {
     }
 
     @Override
-    public TransactionResponse transfer(TransferRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
+    public TransactionResponse createTransaction(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
+        return switch (request.type()) {
+            case TRANSFER -> transfer(request, callerUserId, performedBy, isEmployee);
+            case DEPOSIT -> deposit(request, callerUserId, performedBy);
+            case WITHDRAWAL -> withdrawal(request, callerUserId, performedBy);
+        };
+    }
+
+    private TransactionResponse transfer(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
+        validateNotBlank(request.fromIban(), "fromIban is required for transfers");
+        validateNotBlank(request.toIban(), "toIban is required for transfers");
         Account from = accountRepository.findRequiredActiveById(request.fromIban());
         Account to   = accountRepository.findRequiredActiveById(request.toIban());
         if (isEmployee) {
@@ -37,44 +48,32 @@ public class TransactionService implements ITransactionService {
             verifyTransferRules(from, to);
         }
         deductWithLimitChecks(from, request.amount());
-        creditAccount(to, request.amount());
+        to.credit(request.amount());
         return transactionRepository.recordResponse(
-                request.fromIban(),
-                request.toIban(),
-                request.amount(),
-                performedBy,
-                request.description(),
-                com.banking.model.Transaction.TransactionType.TRANSFER
+                request.fromIban(), request.toIban(), request.amount(),
+                performedBy, request.description(), TransactionType.TRANSFER
         );
     }
 
-    @Override
-    public TransactionResponse deposit(AtmRequest request, Long callerUserId, String performedBy) {
-        Account account = accountRepository.findRequiredActiveById(request.iban());
+    private TransactionResponse deposit(TransactionRequest request, Long callerUserId, String performedBy) {
+        validateNotBlank(request.toIban(), "toIban is required for deposits");
+        Account account = accountRepository.findRequiredActiveById(request.toIban());
         verifyCallerOwnsAccount(account, callerUserId);
-        creditAccount(account, request.amount());
+        account.credit(request.amount());
         return transactionRepository.recordResponse(
-                null,
-                request.iban(),
-                request.amount(),
-                performedBy,
-                request.description(),
-                com.banking.model.Transaction.TransactionType.DEPOSIT
+                null, request.toIban(), request.amount(),
+                performedBy, request.description(), TransactionType.DEPOSIT
         );
     }
 
-    @Override
-    public TransactionResponse withdrawal(AtmRequest request, Long callerUserId, String performedBy) {
-        Account account = accountRepository.findRequiredActiveById(request.iban());
+    private TransactionResponse withdrawal(TransactionRequest request, Long callerUserId, String performedBy) {
+        validateNotBlank(request.fromIban(), "fromIban is required for withdrawals");
+        Account account = accountRepository.findRequiredActiveById(request.fromIban());
         verifyCallerOwnsAccount(account, callerUserId);
         deductWithLimitChecks(account, request.amount());
         return transactionRepository.recordResponse(
-                request.iban(),
-                null,
-                request.amount(),
-                performedBy,
-                request.description(),
-                com.banking.model.Transaction.TransactionType.WITHDRAWAL
+                request.fromIban(), null, request.amount(),
+                performedBy, request.description(), TransactionType.WITHDRAWAL
         );
     }
 
@@ -86,6 +85,12 @@ public class TransactionService implements ITransactionService {
             return transactionRepository.findResponsesForUser(filter, pageable, accountRepository.findOwnedIbansByUserId(callerUserId));
         }
         return transactionRepository.findResponses(filter, pageable);
+    }
+
+    private void validateNotBlank(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new InvalidTransferException(message);
+        }
     }
 
     private void deductWithLimitChecks(Account account, BigDecimal amount) {
@@ -127,9 +132,5 @@ public class TransactionService implements ITransactionService {
         if (!account.getUser().getId().equals(callerUserId)) {
             throw new UnauthorizedAccountAccessException(account.getIban());
         }
-    }
-
-    private void creditAccount(Account account, BigDecimal amount) {
-        account.credit(amount);
     }
 }
