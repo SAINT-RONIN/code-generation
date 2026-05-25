@@ -2,6 +2,7 @@ package com.banking.service;
 
 import com.banking.dto.CustomerResponse;
 import com.banking.dto.CustomerUpdateRequest;
+import com.banking.mapper.CustomerMapper;
 import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
 import com.banking.model.User;
@@ -24,10 +25,12 @@ public class CustomerService implements ICustomerService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+    private final CustomerMapper customerMapper;
 
-    public CustomerService(UserRepository userRepository, AccountRepository accountRepository) {
+    public CustomerService(UserRepository userRepository, AccountRepository accountRepository, CustomerMapper customerMapper) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
+        this.customerMapper = customerMapper;
     }
 
     @Override

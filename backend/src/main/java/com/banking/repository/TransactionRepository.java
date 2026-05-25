@@ -1,7 +1,6 @@
 package com.banking.repository;
 
 import com.banking.dto.TransactionFilter;
-import com.banking.dto.TransactionResponse;
 import com.banking.model.Transaction;
 import com.banking.model.Transaction.TransactionType;
 import com.banking.repository.specifications.TransactionSpecification;
@@ -27,22 +26,22 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
         return sumOutgoingTodayForIban(iban, LocalDate.now().atStartOfDay());
     }
 
-    default TransactionResponse recordResponse(String fromIban, String toIban, BigDecimal amount,
-                                              String performedBy, String description, TransactionType type) {
-        return TransactionResponse.from(save(new Transaction(fromIban, toIban, amount, performedBy, description, type)));
+    default Transaction record(String fromIban, String toIban, BigDecimal amount,
+                               String performedBy, String description, TransactionType type) {
+        return save(new Transaction(fromIban, toIban, amount, performedBy, description, type));
     }
 
-    default Page<TransactionResponse> findResponses(TransactionFilter filter, Pageable pageable) {
-        return findAll(TransactionSpecification.matchesFilter(filter), pageable).map(TransactionResponse::from);
+    default Page<Transaction> findByFilter(TransactionFilter filter, Pageable pageable) {
+        return findAll(TransactionSpecification.matchesFilter(filter), pageable);
     }
 
-    default Page<TransactionResponse> findResponsesForUser(TransactionFilter filter, Pageable pageable, List<String> ibans) {
+    default Page<Transaction> findByFilterForUser(TransactionFilter filter, Pageable pageable, List<String> ibans) {
         if (ibans.isEmpty()) {
             return Page.empty(pageable);
         }
         Specification<Transaction> spec = TransactionSpecification.matchesFilter(filter)
                 .and(involvesAnyOf(ibans));
-        return findAll(spec, pageable).map(TransactionResponse::from);
+        return findAll(spec, pageable);
     }
 
     private Specification<Transaction> involvesAnyOf(List<String> ibans) {

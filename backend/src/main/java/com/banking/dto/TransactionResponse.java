@@ -1,6 +1,5 @@
 package com.banking.dto;
 
-import com.banking.model.Transaction;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -17,17 +16,4 @@ public record TransactionResponse(
         String description,
         @Schema(example = "TRANSFER")
         String transactionType
-) {
-    public static TransactionResponse from(Transaction transaction) {
-        return new TransactionResponse(
-                transaction.getId(),
-                transaction.getFromIban(),
-                transaction.getToIban(),
-                transaction.getAmount(),
-                transaction.getTimestamp(),
-                transaction.getPerformedBy(),
-                transaction.getDescription(),
-                transaction.getTransactionType().name()
-        );
-    }
-}
+) {}

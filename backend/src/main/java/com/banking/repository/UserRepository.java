@@ -1,6 +1,5 @@
 package com.banking.repository;
 
-import com.banking.dto.CustomerResponse;
 import com.banking.dto.IbanSearchResponse;
 import com.banking.exception.EmailAlreadyInUseException;
 import com.banking.exception.CustomerNotFoundException;
@@ -46,10 +45,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<User> findCustomers(@Param("status") UserStatus status, @Param("search") String search, Pageable pageable);
-
-    default Page<CustomerResponse> findCustomerResponses(UserStatus status, String search, Pageable pageable) {
-        return findCustomers(status, search, pageable).map(CustomerResponse::from);
-    }
 
     default void ensureEmailAvailable(String email) {
         if (existsByEmail(email)) {
