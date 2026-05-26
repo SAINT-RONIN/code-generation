@@ -170,9 +170,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedTransaction(String fromIban, String toIban, String amount,
                                  String performedBy, String description, TransactionType type, LocalDateTime timestamp) {
-        Transaction tx = new Transaction(fromIban, toIban, new BigDecimal(amount), performedBy, description, type);
-        tx.setTimestamp(timestamp);
-        transactionRepository.save(tx);
+        transactionRepository.save(new Transaction(fromIban, toIban, new BigDecimal(amount), performedBy, description, type, timestamp));
     }
 
     private String generateUniqueIban() {

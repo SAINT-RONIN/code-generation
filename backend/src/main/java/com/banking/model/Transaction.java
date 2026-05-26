@@ -1,9 +1,15 @@
 package com.banking.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,7 +18,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "transactions")
 @Getter
-@Setter
 @NoArgsConstructor
 public class Transaction {
 
@@ -44,12 +49,18 @@ public class Transaction {
 
     public Transaction(String fromIban, String toIban, BigDecimal amount,
                        String performedBy, String description, TransactionType transactionType) {
+        this(fromIban, toIban, amount, performedBy, description, transactionType, LocalDateTime.now());
+    }
+
+    public Transaction(String fromIban, String toIban, BigDecimal amount,
+                       String performedBy, String description, TransactionType transactionType,
+                       LocalDateTime timestamp) {
         this.fromIban = fromIban;
         this.toIban = toIban;
         this.amount = amount;
         this.performedBy = performedBy;
         this.description = description;
         this.transactionType = transactionType;
-        this.timestamp = LocalDateTime.now();
+        this.timestamp = timestamp;
     }
 }
