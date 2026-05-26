@@ -3,6 +3,7 @@ package com.banking.service;
 import com.banking.dto.LoginRequest;
 import com.banking.dto.LoginResponse;
 import com.banking.dto.RegisterRequest;
+import com.banking.mapper.LoginMapper;
 import com.banking.model.User;
 import com.banking.model.User.UserStatus;
 import com.banking.repository.UserRepository;
@@ -18,11 +19,14 @@ public class AuthService implements IAuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final LoginMapper loginMapper;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                       JwtUtil jwtUtil, LoginMapper loginMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.loginMapper = loginMapper;
     }
 
     @Override
@@ -37,7 +41,7 @@ public class AuthService implements IAuthService {
         verifyAccountIsActive(user);
         verifyPassword(request.password(), user.getPassword());
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
-        return new LoginResponse(token, user.getRole().name());
+        return loginMapper.toResponse(token, user);
     }
 
     private void verifyAccountIsActive(User user) {

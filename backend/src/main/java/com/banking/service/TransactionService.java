@@ -2,6 +2,7 @@ package com.banking.service;
 
 import com.banking.dto.*;
 import com.banking.exception.*;
+import com.banking.mapper.TransactionMapper;
 import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
 import com.banking.model.Transaction.TransactionType;
@@ -21,10 +22,13 @@ public class TransactionService implements ITransactionService {
 
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
+    private final TransactionMapper transactionMapper;
 
-    public TransactionService(TransactionRepository transactionRepository, AccountRepository accountRepository) {
+    public TransactionService(TransactionRepository transactionRepository, AccountRepository accountRepository,
+                              TransactionMapper transactionMapper) {
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
+        this.transactionMapper = transactionMapper;
     }
 
     @Override
@@ -49,10 +53,10 @@ public class TransactionService implements ITransactionService {
         }
         deductWithLimitChecks(from, request.amount());
         to.credit(request.amount());
-        return transactionRepository.recordResponse(
+        return transactionMapper.toResponse(transactionRepository.record(
                 request.fromIban(), request.toIban(), request.amount(),
                 performedBy, request.description(), TransactionType.TRANSFER
-        );
+        ));
     }
 
     private TransactionResponse deposit(TransactionRequest request, Long callerUserId, String performedBy) {
@@ -60,10 +64,10 @@ public class TransactionService implements ITransactionService {
         Account account = accountRepository.findRequiredActiveById(request.toIban());
         verifyCallerOwnsAccount(account, callerUserId);
         account.credit(request.amount());
-        return transactionRepository.recordResponse(
+        return transactionMapper.toResponse(transactionRepository.record(
                 null, request.toIban(), request.amount(),
                 performedBy, request.description(), TransactionType.DEPOSIT
-        );
+        ));
     }
 
     private TransactionResponse withdrawal(TransactionRequest request, Long callerUserId, String performedBy) {
@@ -71,10 +75,10 @@ public class TransactionService implements ITransactionService {
         Account account = accountRepository.findRequiredActiveById(request.fromIban());
         verifyCallerOwnsAccount(account, callerUserId);
         deductWithLimitChecks(account, request.amount());
-        return transactionRepository.recordResponse(
+        return transactionMapper.toResponse(transactionRepository.record(
                 request.fromIban(), null, request.amount(),
                 performedBy, request.description(), TransactionType.WITHDRAWAL
-        );
+        ));
     }
 
     @Override
@@ -82,9 +86,10 @@ public class TransactionService implements ITransactionService {
     public Page<TransactionResponse> findTransactions(TransactionFilter filter, Pageable pageable,
                                                        Long callerUserId, boolean isEmployee) {
         if (!isEmployee) {
-            return transactionRepository.findResponsesForUser(filter, pageable, accountRepository.findOwnedIbansByUserId(callerUserId));
+            return transactionRepository.findByFilterForUser(filter, pageable, accountRepository.findOwnedIbansByUserId(callerUserId))
+                    .map(transactionMapper::toResponse);
         }
-        return transactionRepository.findResponses(filter, pageable);
+        return transactionRepository.findByFilter(filter, pageable).map(transactionMapper::toResponse);
     }
 
     private void validateNotBlank(String value, String message) {

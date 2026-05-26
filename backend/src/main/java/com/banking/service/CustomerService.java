@@ -36,7 +36,7 @@ public class CustomerService implements ICustomerService {
     @Override
     @Transactional(readOnly = true)
     public Page<CustomerResponse> findCustomers(UserStatus status, String search, Pageable pageable) {
-        return userRepository.findCustomerResponses(status, search, pageable);
+        return userRepository.findCustomers(status, search, pageable).map(customerMapper::toResponse);
     }
 
     @Override
@@ -48,7 +48,7 @@ public class CustomerService implements ICustomerService {
         } else if (hasLimitUpdates(request)) {
             applyLimitUpdates(customer, request);
         }
-        return CustomerResponse.from(customer);
+        return customerMapper.toResponse(customer);
     }
 
     private void applyStatusTransition(User customer, UserStatus newStatus, CustomerUpdateRequest request) {
