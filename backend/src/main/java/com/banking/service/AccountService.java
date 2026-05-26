@@ -6,8 +6,10 @@ import com.banking.dto.AccountUpdateRequest;
 import com.banking.dto.IbanSearchResponse;
 import com.banking.mapper.AccountMapper;
 import com.banking.model.Account;
+import com.banking.exception.InvalidTransferException;
 import com.banking.model.Account.AccountType;
 import com.banking.model.User;
+import com.banking.model.User.UserStatus;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
 import com.banking.repository.specifications.AccountSpecification;
@@ -66,6 +68,9 @@ public class AccountService implements IAccountService {
     @Transactional
     public AccountResponse createAccount(AccountCreateRequest request) {
         User customer = userRepository.findRequiredCustomerById(request.customerId());
+        if (customer.getStatus() != UserStatus.ACTIVE) {
+            throw new InvalidTransferException("Cannot create accounts for a customer that is not active");
+        }
         AccountType type = AccountType.valueOf(request.accountType());
         Account account = accountRepository.save(
                 new Account(accountRepository.generateUniqueIban(), type, request.absoluteLimit(), request.dailyLimit(), customer)
