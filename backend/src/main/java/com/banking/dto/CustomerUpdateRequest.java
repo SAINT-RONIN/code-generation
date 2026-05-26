@@ -11,6 +11,6 @@ public record CustomerUpdateRequest(
         String status,
         @Schema(description = "Daily limit to apply to the customer's accounts", example = "2000.00")
         @PositiveOrZero BigDecimal dailyLimit,
-        @Schema(description = "Overdraft floor — how far below zero the balance may drop (e.g. -500 allows €500 overdraft, 0 means no overdraft)", example = "-500.00")
+        @Schema(description = "Overdraft floor, how far below zero the balance may drop (e.g. -500 allows €500 overdraft, 0 means no overdraft)", example = "-500.00")
         @NegativeOrZero BigDecimal absoluteLimit
 ) {}

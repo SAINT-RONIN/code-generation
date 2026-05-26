@@ -15,6 +15,6 @@ public record AccountCreateRequest(
         @NotNull @Pattern(regexp = "CHECKING|SAVINGS", message = "must be CHECKING or SAVINGS") String accountType,
         @Schema(description = "Daily transfer limit", example = "2000.00")
         @NotNull @PositiveOrZero BigDecimal dailyLimit,
-        @Schema(description = "Overdraft floor — how far below zero the balance may drop (0 means no overdraft)", example = "0.00")
+        @Schema(description = "Overdraft floor, how far below zero the balance may drop (0 means no overdraft)", example = "0.00")
         @NotNull @NegativeOrZero BigDecimal absoluteLimit
 ) {}
