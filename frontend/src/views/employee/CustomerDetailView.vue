@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
-import { ArrowLeft, AlignLeft, Send, Shield } from 'lucide-vue-next'
+import { ArrowLeft, AlignLeft, Send, Shield, Plus } from 'lucide-vue-next'
 import EmployeeLayout from '../../components/EmployeeLayout.vue'
 import VCard from '../../components/ui/VCard.vue'
 import VPill from '../../components/ui/VPill.vue'
@@ -11,7 +11,7 @@ import VTextInput from '../../components/ui/VTextInput.vue'
 import VModal from '../../components/ui/VModal.vue'
 import CopyChip from '../../components/ui/CopyChip.vue'
 import ActivityRow from '../../components/ActivityRow.vue'
-import { getAllAccounts, updateAccount, updateCustomer } from '../../services/employee'
+import { getAllAccounts, createAccount, updateAccount, updateCustomer } from '../../services/employee'
 import { getTransactions } from '../../services/transactions'
 import { eur } from '../../utils/format'
 import { extractError } from '../../utils/error'
@@ -96,6 +96,30 @@ async function handleClose() {
     toast.value = 'Failed to close accounts'
     setTimeout(() => { toast.value = '' }, 2500)
   } finally { closing.value = false }
+}
+
+const showCreateAccount = ref(false)
+const newAccount = ref({ accountType: 'CHECKING', dailyLimit: '2000', absoluteLimit: '0' })
+const creatingAccount = ref(false)
+
+async function handleCreateAccount() {
+  creatingAccount.value = true
+  try {
+    await createAccount({
+      customerId,
+      accountType: newAccount.value.accountType,
+      dailyLimit: parseFloat(newAccount.value.dailyLimit),
+      absoluteLimit: parseFloat(newAccount.value.absoluteLimit),
+    })
+    showCreateAccount.value = false
+    newAccount.value = { accountType: 'CHECKING', dailyLimit: '2000', absoluteLimit: '0' }
+    await refreshAccounts()
+    toast.value = 'Account created'
+    setTimeout(() => { toast.value = '' }, 2500)
+  } catch (e) {
+    toast.value = extractError(e, 'Failed to create account')
+    setTimeout(() => { toast.value = '' }, 3000)
+  } finally { creatingAccount.value = false }
 }
 
 const reopening = ref(false)
@@ -321,31 +345,38 @@ const TABS = ['overview', 'accounts', 'transactions', 'limits']
       </div>
 
       <!-- ── Accounts ────────────────────────────────── -->
-      <div v-if="tab === 'accounts'" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div
-          v-for="(acc, i) in accounts"
-          :key="acc.iban"
-          class="rounded-2xl p-7"
-          :class="i === 0 ? 'card-vault' : 'card-savings'"
-        >
-          <div class="flex items-start justify-between mb-8">
-            <div>
-              <p class="text-[11px] font-medium uppercase tracking-[.14em] opacity-70 mb-1">{{ acc.accountType }}</p>
-              <VPill :tone="acc.active ? 'success' : 'danger'" class="opacity-90">
-                {{ acc.active ? 'Active' : 'Closed' }}
-              </VPill>
+      <div v-if="tab === 'accounts'">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div
+            v-for="(acc, i) in accounts"
+            :key="acc.iban"
+            class="rounded-2xl p-7"
+            :class="i === 0 ? 'card-vault' : 'card-savings'"
+          >
+            <div class="flex items-start justify-between mb-8">
+              <div>
+                <p class="text-[11px] font-medium uppercase tracking-[.14em] opacity-70 mb-1">{{ acc.accountType }}</p>
+                <VPill :tone="acc.active ? 'success' : 'danger'" class="opacity-90">
+                  {{ acc.active ? 'Active' : 'Closed' }}
+                </VPill>
+              </div>
+            </div>
+
+            <p
+              class="font-display tabnum mb-6"
+              style="font-size: 44px; font-weight: 300; line-height: 1;"
+            >{{ eur(acc.balance) }}</p>
+
+            <div class="pt-5 border-t" :style="{ borderColor: i === 0 ? 'rgba(255,255,255,.15)' : 'var(--line)' }">
+              <p class="text-[11px] uppercase tracking-[.12em] opacity-60 mb-2">IBAN</p>
+              <CopyChip :value="acc.iban" :light="i === 0" />
             </div>
           </div>
-
-          <p
-            class="font-display tabnum mb-6"
-            style="font-size: 44px; font-weight: 300; line-height: 1;"
-          >{{ eur(acc.balance) }}</p>
-
-          <div class="pt-5 border-t" :style="{ borderColor: i === 0 ? 'rgba(255,255,255,.15)' : 'var(--line)' }">
-            <p class="text-[11px] uppercase tracking-[.12em] opacity-60 mb-2">IBAN</p>
-            <CopyChip :value="acc.iban" :light="i === 0" />
-          </div>
+        </div>
+        <div class="mt-5">
+          <VBtn variant="secondary" size="sm" @click="showCreateAccount = true">
+            <Plus class="w-4 h-4" /> New account
+          </VBtn>
         </div>
       </div>
 
@@ -407,6 +438,44 @@ const TABS = ['overview', 'accounts', 'transactions', 'limits']
       </div>
 
     </template>
+
+    <!-- ── Create account modal ────────────────────── -->
+    <VModal :open="showCreateAccount" @close="showCreateAccount = false">
+      <div class="p-7">
+        <h3 class="font-display text-2xl mb-2" style="font-weight: 400;" :style="{ color: 'var(--ink)' }">
+          New account
+        </h3>
+        <p class="text-sm mb-6" :style="{ color: 'var(--ink-2)' }">
+          Create an additional account for <strong>{{ customerName }}</strong>.
+        </p>
+
+        <div class="space-y-5 mb-7">
+          <VField label="Account type">
+            <select
+              v-model="newAccount.accountType"
+              class="w-full h-10 px-3 text-sm rounded-lg border"
+              :style="{ background: 'var(--surface)', borderColor: 'var(--line-2)', color: 'var(--ink)' }"
+            >
+              <option value="CHECKING">Checking</option>
+              <option value="SAVINGS">Savings</option>
+            </select>
+          </VField>
+          <VField label="Daily limit" hint="Maximum the customer can send per day from this account.">
+            <VTextInput v-model="newAccount.dailyLimit" type="number" placeholder="2000" />
+          </VField>
+          <VField label="Absolute limit" hint="Balance floor. Use a negative number to allow overdraft.">
+            <VTextInput v-model="newAccount.absoluteLimit" type="number" placeholder="0" />
+          </VField>
+        </div>
+
+        <div class="flex gap-3">
+          <VBtn variant="secondary" size="md" class="flex-1" @click="showCreateAccount = false">Cancel</VBtn>
+          <VBtn variant="primary" size="md" class="flex-1" :disabled="creatingAccount" @click="handleCreateAccount">
+            {{ creatingAccount ? 'Creating…' : 'Create account' }}
+          </VBtn>
+        </div>
+      </div>
+    </VModal>
 
     <!-- ── Close confirm modal ────────────────────── -->
     <VModal :open="confirmClose" @close="confirmClose = false">

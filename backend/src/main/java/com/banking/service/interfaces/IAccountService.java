@@ -1,5 +1,6 @@
 package com.banking.service.interfaces;
 
+import com.banking.dto.AccountCreateRequest;
 import com.banking.dto.AccountResponse;
 import com.banking.dto.AccountUpdateRequest;
 import com.banking.dto.IbanSearchResponse;
@@ -12,5 +13,6 @@ public interface IAccountService {
     List<IbanSearchResponse> searchCustomerCheckingIbansByName(String firstName, String lastName, String iban, Long excludeUserId);
     List<AccountResponse> findMyAccounts(Long userId);
     Page<AccountResponse> findAllAccounts(String ownerEmail, Boolean active, Pageable pageable);
+    AccountResponse createAccount(AccountCreateRequest request);
     AccountResponse updateAccount(String iban, AccountUpdateRequest request);
 }

@@ -1,5 +1,6 @@
 package com.banking.controller;
 
+import com.banking.dto.AccountCreateRequest;
 import com.banking.dto.AccountResponse;
 import com.banking.dto.AccountUpdateRequest;
 import com.banking.dto.IbanSearchResponse;
@@ -13,11 +14,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -68,6 +71,19 @@ public class AccountController {
             @RequestParam(required = false, defaultValue = "") String iban,
             @AuthenticationPrincipal AuthenticatedUser caller) {
         return ResponseEntity.ok(accountService.searchCustomerCheckingIbansByName(firstName, lastName, iban, caller.getId()));
+    }
+
+    @Operation(summary = "Create a new account for an existing customer")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Account created"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "403", description = "Not an employee"),
+            @ApiResponse(responseCode = "404", description = "Customer not found")
+    })
+    @PostMapping
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public ResponseEntity<AccountResponse> createAccount(@Valid @RequestBody AccountCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(accountService.createAccount(request));
     }
 
     @Operation(summary = "Update one account")

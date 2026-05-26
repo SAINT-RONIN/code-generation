@@ -1,14 +1,17 @@
 package com.banking.service;
 
+import com.banking.dto.AccountCreateRequest;
 import com.banking.dto.AccountResponse;
 import com.banking.dto.AccountUpdateRequest;
 import com.banking.dto.IbanSearchResponse;
 import com.banking.mapper.AccountMapper;
 import com.banking.model.Account;
+import com.banking.model.Account.AccountType;
+import com.banking.model.User;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
-import com.banking.service.interfaces.IAccountService;
 import com.banking.repository.specifications.AccountSpecification;
+import com.banking.service.interfaces.IAccountService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -56,6 +59,18 @@ public class AccountService implements IAccountService {
             spec = spec.and(AccountSpecification.isActive(active));
         }
         return accountRepository.findAll(spec, pageable).map(accountMapper::toResponse);
+    }
+
+    // Create a new account for an existing active customer.
+    @Override
+    @Transactional
+    public AccountResponse createAccount(AccountCreateRequest request) {
+        User customer = userRepository.findRequiredCustomerById(request.customerId());
+        AccountType type = AccountType.valueOf(request.accountType());
+        Account account = accountRepository.save(
+                new Account(accountRepository.generateUniqueIban(), type, request.absoluteLimit(), request.dailyLimit(), customer)
+        );
+        return accountMapper.toResponse(account);
     }
 
     // Update the selected account fields for one account.
