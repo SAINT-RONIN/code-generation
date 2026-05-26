@@ -23,4 +23,6 @@ public class TransactionFilter {
     private BigDecimal amountMax;
     @Schema(description = "Limit results to one IBAN", example = "NL91ABNA0417164300")
     private String iban;
+    @Schema(description = "Filter by transaction type", example = "TRANSFER")
+    private String transactionType;
 }

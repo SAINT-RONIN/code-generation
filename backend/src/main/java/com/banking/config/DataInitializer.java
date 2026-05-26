@@ -9,8 +9,6 @@ import com.banking.model.User.UserStatus;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.TransactionRepository;
 import com.banking.repository.UserRepository;
-import org.iban4j.CountryCode;
-import org.iban4j.Iban;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -89,8 +87,8 @@ public class DataInitializer implements CommandLineRunner {
         customer.setPin(passwordEncoder.encode("1234"));
         customer = userRepository.save(customer);
         return accountRepository.saveAll(List.of(
-                new Account(generateUniqueIban(), AccountType.CHECKING, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer),
-                new Account(generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("500.00"), customer)
+                new Account(accountRepository.generateUniqueIban(), AccountType.CHECKING, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer),
+                new Account(accountRepository.generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("500.00"), customer)
         ));
     }
 
@@ -106,8 +104,8 @@ public class DataInitializer implements CommandLineRunner {
         customer.setPin(passwordEncoder.encode("1234"));
         customer = userRepository.save(customer);
         return accountRepository.saveAll(List.of(
-                new Account(generateUniqueIban(), AccountType.CHECKING, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer),
-                new Account(generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("500.00"), customer)
+                new Account(accountRepository.generateUniqueIban(), AccountType.CHECKING, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer),
+                new Account(accountRepository.generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("500.00"), customer)
         ));
     }
 
@@ -173,11 +171,4 @@ public class DataInitializer implements CommandLineRunner {
         transactionRepository.save(new Transaction(fromIban, toIban, new BigDecimal(amount), performedBy, description, type, timestamp));
     }
 
-    private String generateUniqueIban() {
-        String iban;
-        do {
-            iban = Iban.random(CountryCode.NL).toString();
-        } while (accountRepository.existsById(iban));
-        return iban;
-    }
 }

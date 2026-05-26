@@ -12,6 +12,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import org.iban4j.CountryCode;
+import org.iban4j.Iban;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -59,5 +62,13 @@ public interface AccountRepository extends JpaRepository<Account, String>, JpaSp
             throw new AccountNotFoundException(iban);
         }
         return account;
+    }
+
+    default String generateUniqueIban() {
+        String iban;
+        do {
+            iban = Iban.random(CountryCode.NL).toString();
+        } while (existsById(iban));
+        return iban;
     }
 }

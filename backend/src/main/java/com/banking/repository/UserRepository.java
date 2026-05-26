@@ -71,10 +71,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
         return user;
     }
 
-    default User create(User user) {
-        return save(user);
-    }
-
     default UserDetails findAuthenticatedUserByEmail(String email) {
         User user = findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));

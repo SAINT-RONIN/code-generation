@@ -10,8 +10,6 @@ import com.banking.model.User.UserStatus;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.UserRepository;
 import com.banking.service.interfaces.ICustomerService;
-import org.iban4j.CountryCode;
-import org.iban4j.Iban;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -70,8 +68,8 @@ public class CustomerService implements ICustomerService {
         BigDecimal daily    = request.dailyLimit()    != null ? request.dailyLimit()    : BigDecimal.valueOf(2000);
         BigDecimal absolute = request.absoluteLimit() != null ? request.absoluteLimit() : BigDecimal.ZERO;
         accountRepository.saveAll(List.of(
-                new Account(generateUniqueIban(), AccountType.CHECKING, absolute, daily, customer),
-                new Account(generateUniqueIban(), AccountType.SAVINGS, absolute, daily, customer)
+                new Account(accountRepository.generateUniqueIban(), AccountType.CHECKING, absolute, daily, customer),
+                new Account(accountRepository.generateUniqueIban(), AccountType.SAVINGS, absolute, daily, customer)
         ));
         customer.setStatus(UserStatus.ACTIVE);
     }
@@ -86,13 +84,5 @@ public class CustomerService implements ICustomerService {
 
     private boolean hasLimitUpdates(CustomerUpdateRequest request) {
         return request.dailyLimit() != null || request.absoluteLimit() != null;
-    }
-
-    private String generateUniqueIban() {
-        String iban;
-        do {
-            iban = Iban.random(CountryCode.NL).toString();
-        } while (accountRepository.existsById(iban));
-        return iban;
     }
 }

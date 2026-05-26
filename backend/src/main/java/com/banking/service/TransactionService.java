@@ -48,10 +48,14 @@ public class TransactionService implements ITransactionService {
     private TransactionResponse transfer(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
         validateNotBlank(request.fromIban(), "fromIban is required for transfers");
         validateNotBlank(request.toIban(), "toIban is required for transfers");
+        if (request.fromIban().equals(request.toIban())) {
+            throw new InvalidTransferException("Source and destination account cannot be the same");
+        }
         Account from = accountRepository.findRequiredActiveById(request.fromIban());
         Account to   = accountRepository.findRequiredActiveById(request.toIban());
         if (isEmployee) {
             verifyBothAreCheckingAccounts(from, to);
+            verifyDifferentOwners(from, to);
         } else {
             verifyCallerOwnsAccount(from, callerUserId);
             verifyTransferRules(from, to);
@@ -135,6 +139,12 @@ public class TransactionService implements ITransactionService {
     private void verifyBothAreCheckingAccounts(Account from, Account to) {
         if (from.getAccountType() != AccountType.CHECKING || to.getAccountType() != AccountType.CHECKING) {
             throw new InvalidTransferException("Employee transfers must be between checking accounts");
+        }
+    }
+
+    private void verifyDifferentOwners(Account from, Account to) {
+        if (from.getUser().getId().equals(to.getUser().getId())) {
+            throw new InvalidTransferException("Employee transfers must be between different customers");
         }
     }
 

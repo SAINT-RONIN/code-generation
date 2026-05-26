@@ -2,20 +2,13 @@ package com.banking.repository.specifications;
 
 import com.banking.dto.TransactionFilter;
 import com.banking.model.Transaction;
+import com.banking.model.Transaction.TransactionType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalTime;
 
 /** JPA Specification builders for dynamic transaction queries. */
 public class TransactionSpecification {
-
-    /** @return spec matching transactions where the given IBAN appears as sender or receiver */
-    public static Specification<Transaction> involvesIban(String iban) {
-        return (root, query, cb) -> cb.or(
-                cb.equal(root.get("fromIban"), iban),
-                cb.equal(root.get("toIban"), iban)
-        );
-    }
 
     /** @return a combined spec for all non-null fields in the filter */
     public static Specification<Transaction> matchesFilter(TransactionFilter filter) {
@@ -55,6 +48,10 @@ public class TransactionSpecification {
                     cb.equal(root.get("fromIban"), filter.getIban()),
                     cb.equal(root.get("toIban"), filter.getIban())
             ));
+
+        if (filter.getTransactionType() != null && !filter.getTransactionType().isBlank())
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("transactionType"), TransactionType.valueOf(filter.getTransactionType())));
 
         return spec;
     }

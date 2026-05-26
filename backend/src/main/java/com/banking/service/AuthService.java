@@ -32,7 +32,7 @@ public class AuthService implements IAuthService {
     @Override
     public User register(RegisterRequest request) {
         userRepository.ensureEmailAvailable(request.email());
-        return userRepository.create(buildCustomerFrom(request));
+        return userRepository.save(buildCustomerFrom(request));
     }
 
     @Override

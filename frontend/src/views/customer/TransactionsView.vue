@@ -25,7 +25,7 @@ const showFilters = ref(false)
 const selectedTx = ref(null)
 const selectedIban = ref('')
 
-const filters = ref({ amountMin: '', amountMax: '' })
+const filters = ref({ amountMin: '', amountMax: '', transactionType: '' })
 
 async function loadTransactions() {
   loading.value = true
@@ -37,6 +37,7 @@ async function loadTransactions() {
     const params = { iban, page: page.value, size: pageSize, sort: 'timestamp,desc' }
     if (filters.value.amountMin) params.amountMin = filters.value.amountMin
     if (filters.value.amountMax) params.amountMax = filters.value.amountMax
+    if (filters.value.transactionType) params.transactionType = filters.value.transactionType
 
     const { data } = await getTransactions(params)
     transactions.value = data.content ?? []
@@ -59,7 +60,7 @@ onMounted(async () => {
 watch(page, loadTransactions)
 
 function applyFilters() { page.value = 0; loadTransactions() }
-function clearFilters() { filters.value = { amountMin: '', amountMax: '' }; page.value = 0; loadTransactions() }
+function clearFilters() { filters.value = { amountMin: '', amountMax: '', transactionType: '' }; page.value = 0; loadTransactions() }
 
 function fmtTime(ts) {
   if (!ts) return '—'
@@ -92,7 +93,7 @@ function fmtTime(ts) {
     </div>
 
     <div v-if="showFilters" class="mb-4 rounded-2xl border p-4" :style="{ background: 'var(--surface)', borderColor: 'var(--line)' }">
-      <div class="grid grid-cols-2 gap-3 mb-3">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
         <div>
           <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--ink-2)' }">Min amount (€)</label>
           <input v-model="filters.amountMin" type="number" placeholder="0"
@@ -104,6 +105,17 @@ function fmtTime(ts) {
           <input v-model="filters.amountMax" type="number" placeholder="∞"
             class="w-full h-9 px-3 text-sm rounded-lg border"
             :style="{ background: 'var(--surface-2)', borderColor: 'var(--line-2)', color: 'var(--ink)' }" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--ink-2)' }">Type</label>
+          <select v-model="filters.transactionType"
+            class="w-full h-9 px-3 text-sm rounded-lg border"
+            :style="{ background: 'var(--surface-2)', borderColor: 'var(--line-2)', color: 'var(--ink)' }">
+            <option value="">All types</option>
+            <option value="TRANSFER">Transfer</option>
+            <option value="DEPOSIT">Deposit</option>
+            <option value="WITHDRAWAL">Withdrawal</option>
+          </select>
         </div>
       </div>
       <div class="flex gap-2">

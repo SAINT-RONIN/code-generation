@@ -23,4 +23,9 @@ public class AuthenticatedUser extends org.springframework.security.core.userdet
     public String getEmail() {
         return getUsername();
     }
+
+    // Check whether this user holds the EMPLOYEE role.
+    public boolean isEmployee() {
+        return getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
+    }
 }

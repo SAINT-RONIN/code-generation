@@ -46,9 +46,8 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionResponse> createTransaction(@Valid @RequestBody TransactionRequest request,
                                                                   @AuthenticationPrincipal AuthenticatedUser caller) {
-        boolean isEmployee = isEmployee(caller);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(transactionService.createTransaction(request, caller.getId(), caller.getEmail(), isEmployee));
+                .body(transactionService.createTransaction(request, caller.getId(), caller.getEmail(), caller.isEmployee()));
     }
 
     @Operation(summary = "Get filtered transaction history")
@@ -57,10 +56,6 @@ public class TransactionController {
     public ResponseEntity<Page<TransactionResponse>> getTransactions(@ModelAttribute TransactionFilter filter,
                                                                       Pageable pageable,
                                                                       @AuthenticationPrincipal AuthenticatedUser caller) {
-        return ResponseEntity.ok(transactionService.findTransactions(filter, pageable, caller.getId(), isEmployee(caller)));
-    }
-
-    private boolean isEmployee(AuthenticatedUser caller) {
-        return caller.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
+        return ResponseEntity.ok(transactionService.findTransactions(filter, pageable, caller.getId(), caller.isEmployee()));
     }
 }
