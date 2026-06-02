@@ -104,7 +104,7 @@ function isActive(to) {
           <button
             class="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-left row"
             :style="{ color: 'var(--debit)' }"
-            @click="logout"
+            @click="logout()"
           >
             <LogOut class="w-4 h-4" /> Log out
           </button>
@@ -154,7 +154,7 @@ function isActive(to) {
           <button
             class="nav-item flex items-center gap-3 h-10 px-3 rounded-lg text-sm font-medium w-full text-left lift"
             :style="{ color: 'var(--debit)' }"
-            @click="logout"
+            @click="logout()"
           >
             <LogOut class="w-4 h-4 flex-shrink-0" />
             Log out

@@ -37,7 +37,7 @@ const { logout } = useAuth()
         <VPill tone="warn">Under review</VPill>
       </div>
 
-      <VBtn variant="secondary" size="md" class="w-full" @click="logout">
+      <VBtn variant="secondary" size="md" class="w-full" @click="logout()">
         Sign out
       </VBtn>
     </div>
