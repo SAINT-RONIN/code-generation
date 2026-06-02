@@ -41,7 +41,6 @@ application-local.properties
 application-local.yml
 application-secret.properties
 application-secret.yml
-application-prod.properties
 application-prod.yml
 *.env
 .env
