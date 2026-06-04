@@ -29,6 +29,7 @@ public class AuthService implements IAuthService {
         this.loginMapper = loginMapper;
     }
 
+    // Register a new customer with PENDING status (needs employee approval)
     @Override
     public User register(RegisterRequest request) {
         userRepository.ensureEmailAvailable(request.email());
@@ -45,6 +46,7 @@ public class AuthService implements IAuthService {
         return userRepository.save(user);
     }
 
+    // Authenticate user by email/password, return JWT token + role
     @Override
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findRequiredByEmail(request.email());
@@ -63,6 +65,7 @@ public class AuthService implements IAuthService {
         }
     }
 
+    // Verify the customer's PIN for ATM operations
     @Override
     public void verifyPin(Long userId, String pin) {
         User user = userRepository.findRequiredById(userId);
