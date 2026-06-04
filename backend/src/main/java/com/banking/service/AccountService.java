@@ -52,15 +52,20 @@ public class AccountService implements IAccountService {
                 .toList();
     }
 
-    // Get a filtered page of customer accounts for employee screens.
     @Override
-    public Page<AccountResponse> findAllAccounts(String ownerEmail, Boolean active, Pageable pageable) {
+    public Page<AccountResponse> findAllAccounts(String ownerEmail, Boolean active, Long userId, String accountType, Pageable pageable) {
         Specification<Account> spec = AccountSpecification.customerAccountsOnly();
         if (ownerEmail != null && !ownerEmail.isBlank()) {
             spec = spec.and(AccountSpecification.ownerEmailContains(ownerEmail));
         }
         if (active != null) {
             spec = spec.and(AccountSpecification.isActive(active));
+        }
+        if (userId != null) {
+            spec = spec.and(AccountSpecification.hasUserId(userId));
+        }
+        if (accountType != null && !accountType.isBlank()) {
+            spec = spec.and(AccountSpecification.hasAccountType(AccountType.valueOf(accountType)));
         }
         return accountRepository.findAll(spec, pageable).map(accountMapper::toResponse);
     }

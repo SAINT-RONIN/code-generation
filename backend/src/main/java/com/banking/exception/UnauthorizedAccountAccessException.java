@@ -1,9 +1,9 @@
 package com.banking.exception;
 
-/** Thrown when a customer attempts to operate on an account they do not own. */
+/** Thrown when a caller attempts an operation they are not allowed to perform. */
 public class UnauthorizedAccountAccessException extends RuntimeException {
 
-    public UnauthorizedAccountAccessException(String iban) {
-        super("You do not have access to account: " + iban);
+    public UnauthorizedAccountAccessException(String message) {
+        super(message);
     }
 }

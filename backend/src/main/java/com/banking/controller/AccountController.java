@@ -58,8 +58,10 @@ public class AccountController {
     public ResponseEntity<Page<AccountResponse>> getAllAccounts(
             @RequestParam(required = false) String ownerEmail,
             @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String accountType,
             Pageable pageable) {
-        return ResponseEntity.ok(accountService.findAllAccounts(ownerEmail, active, pageable));
+        return ResponseEntity.ok(accountService.findAllAccounts(ownerEmail, active, userId, accountType, pageable));
     }
 
     @Operation(summary = "Search customer checking accounts by name or IBAN")

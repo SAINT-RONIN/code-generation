@@ -3,6 +3,7 @@ package com.banking.service;
 import com.banking.dto.TransactionRequest;
 import com.banking.dto.TransactionResponse;
 import com.banking.exception.InvalidTransferException;
+import com.banking.exception.UnauthorizedAccountAccessException;
 import com.banking.mapper.TransactionMapper;
 import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
@@ -61,7 +62,7 @@ class TransactionServiceTest {
     @Test
     void transferCreditsDestinationAndDebitsSource() {
         TransactionRequest request = new TransactionRequest("NL01TEST", "NL02TEST",
-                new BigDecimal("200"), "Payment", TransactionType.TRANSFER);
+                new BigDecimal("200"), "Payment");
         Transaction savedTx = new Transaction("NL01TEST", "NL02TEST", new BigDecimal("200"),
                 "test@test.com", "Payment", TransactionType.TRANSFER);
         TransactionResponse response = new TransactionResponse(1L, "NL01TEST", "NL02TEST",
@@ -81,27 +82,36 @@ class TransactionServiceTest {
     }
 
     @Test
-    void transferThrowsWhenFromIbanIsBlank() {
-        TransactionRequest request = new TransactionRequest("", "NL02TEST",
-                new BigDecimal("100"), "Note", TransactionType.TRANSFER);
+    void throwsWhenBothIbansAreBlank() {
+        TransactionRequest request = new TransactionRequest("", "",
+                new BigDecimal("100"), "Note");
 
         assertThrows(InvalidTransferException.class,
                 () -> transactionService.createTransaction(request, 1L, "test@test.com", false));
     }
 
     @Test
-    void transferThrowsWhenToIbanIsBlank() {
-        TransactionRequest request = new TransactionRequest("NL01TEST", "",
-                new BigDecimal("100"), "Note", TransactionType.TRANSFER);
+    void depositRejectedForEmployee() {
+        TransactionRequest request = new TransactionRequest(null, "NL01TEST",
+                new BigDecimal("100"), "ATM deposit");
 
-        assertThrows(InvalidTransferException.class,
-                () -> transactionService.createTransaction(request, 1L, "test@test.com", false));
+        assertThrows(UnauthorizedAccountAccessException.class,
+                () -> transactionService.createTransaction(request, 99L, "employee@bank.com", true));
+    }
+
+    @Test
+    void withdrawalRejectedForEmployee() {
+        TransactionRequest request = new TransactionRequest("NL01TEST", null,
+                new BigDecimal("100"), "ATM withdrawal");
+
+        assertThrows(UnauthorizedAccountAccessException.class,
+                () -> transactionService.createTransaction(request, 99L, "employee@bank.com", true));
     }
 
     @Test
     void transferCallsEmployeePolicyWhenEmployee() {
         TransactionRequest request = new TransactionRequest("NL01TEST", "NL02TEST",
-                new BigDecimal("100"), "Note", TransactionType.TRANSFER);
+                new BigDecimal("100"), "Note");
         Transaction savedTx = new Transaction("NL01TEST", "NL02TEST", new BigDecimal("100"),
                 "employee@bank.com", "Note", TransactionType.TRANSFER);
         TransactionResponse response = new TransactionResponse(1L, "NL01TEST", "NL02TEST",
@@ -121,7 +131,7 @@ class TransactionServiceTest {
     @Test
     void transferCallsCustomerPolicyWhenCustomer() {
         TransactionRequest request = new TransactionRequest("NL01TEST", "NL02TEST",
-                new BigDecimal("100"), "Note", TransactionType.TRANSFER);
+                new BigDecimal("100"), "Note");
         Transaction savedTx = new Transaction("NL01TEST", "NL02TEST", new BigDecimal("100"),
                 "test@test.com", "Note", TransactionType.TRANSFER);
         TransactionResponse response = new TransactionResponse(1L, "NL01TEST", "NL02TEST",
@@ -144,7 +154,7 @@ class TransactionServiceTest {
     @Test
     void depositCreditsAccount() {
         TransactionRequest request = new TransactionRequest(null, "NL01TEST",
-                new BigDecimal("300"), "ATM deposit", TransactionType.DEPOSIT);
+                new BigDecimal("300"), "ATM deposit");
         Transaction savedTx = new Transaction(null, "NL01TEST", new BigDecimal("300"),
                 "test@test.com", "ATM deposit", TransactionType.DEPOSIT);
         TransactionResponse response = new TransactionResponse(1L, null, "NL01TEST",
@@ -165,7 +175,7 @@ class TransactionServiceTest {
     @Test
     void withdrawalDebitsAccount() {
         TransactionRequest request = new TransactionRequest("NL01TEST", null,
-                new BigDecimal("100"), "ATM withdrawal", TransactionType.WITHDRAWAL);
+                new BigDecimal("100"), "ATM withdrawal");
         Transaction savedTx = new Transaction("NL01TEST", null, new BigDecimal("100"),
                 "test@test.com", "ATM withdrawal", TransactionType.WITHDRAWAL);
         TransactionResponse response = new TransactionResponse(1L, "NL01TEST", null,
@@ -182,12 +192,4 @@ class TransactionServiceTest {
         assertEquals("WITHDRAWAL", result.transactionType());
     }
 
-    @Test
-    void withdrawalThrowsWhenFromIbanIsBlank() {
-        TransactionRequest request = new TransactionRequest(null, null,
-                new BigDecimal("100"), "ATM", TransactionType.WITHDRAWAL);
-
-        assertThrows(InvalidTransferException.class,
-                () -> transactionService.createTransaction(request, 1L, "test@test.com", false));
-    }
 }

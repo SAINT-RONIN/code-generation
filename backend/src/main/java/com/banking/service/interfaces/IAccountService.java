@@ -12,7 +12,7 @@ import java.util.List;
 public interface IAccountService {
     List<IbanSearchResponse> searchCustomerCheckingIbansByName(String firstName, String lastName, String iban, Long excludeUserId);
     List<AccountResponse> findMyAccounts(Long userId);
-    Page<AccountResponse> findAllAccounts(String ownerEmail, Boolean active, Pageable pageable);
+    Page<AccountResponse> findAllAccounts(String ownerEmail, Boolean active, Long userId, String accountType, Pageable pageable);
     AccountResponse createAccount(AccountCreateRequest request);
     AccountResponse updateAccount(String iban, AccountUpdateRequest request);
 }

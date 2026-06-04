@@ -32,8 +32,8 @@ function ownerName(acc) {
 
 onMounted(async () => {
   try {
-    const { data } = await getAllAccounts({ size: 200, sort: 'iban,asc' })
-    accounts.value = (data.content ?? []).filter(a => a.active && a.accountType === 'CHECKING')
+    const { data } = await getAllAccounts({ active: true, accountType: 'CHECKING', size: 200, sort: 'iban,asc' })
+    accounts.value = data.content ?? []
   } catch {
     error.value = 'Could not load customer accounts.'
   } finally {

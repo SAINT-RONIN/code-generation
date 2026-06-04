@@ -43,11 +43,8 @@ const initials = computed(() =>
 
 onMounted(async () => {
   try {
-    // Get customer info
-    const { data: cusData } = await getAllAccounts({ size: 500, sort: 'iban,asc' })
-    const allAcc = cusData.content ?? []
-    // Filter accounts for this customer (by user.id)
-    accounts.value = allAcc.filter(a => a.user?.id === customerId)
+    const { data: cusData } = await getAllAccounts({ userId: customerId, size: 500, sort: 'iban,asc' })
+    accounts.value = cusData.content ?? []
 
     // Get customer object from first account's user
     if (accounts.value[0]?.user) {
@@ -137,9 +134,8 @@ async function handleReopen() {
 }
 
 async function refreshAccounts() {
-  const { data } = await getAllAccounts({ size: 500, sort: 'iban,asc' })
-  const all = data.content ?? []
-  accounts.value = all.filter(a => a.user?.id === customerId)
+  const { data } = await getAllAccounts({ userId: customerId, size: 500, sort: 'iban,asc' })
+  accounts.value = data.content ?? []
 }
 
 const TABS = ['overview', 'accounts', 'transactions', 'limits']

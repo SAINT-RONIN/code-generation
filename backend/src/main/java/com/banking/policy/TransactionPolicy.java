@@ -22,7 +22,7 @@ public class TransactionPolicy {
 
     public void requireCallerOwnsAccount(Account account, Long callerUserId) {
         if (!account.getUser().getId().equals(callerUserId)) {
-            throw new UnauthorizedAccountAccessException(account.getIban());
+            throw new UnauthorizedAccountAccessException("You do not have access to account: " + account.getIban());
         }
     }
 

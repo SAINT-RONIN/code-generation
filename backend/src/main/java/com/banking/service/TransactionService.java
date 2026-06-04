@@ -4,6 +4,7 @@ import com.banking.dto.TransactionFilter;
 import com.banking.dto.TransactionRequest;
 import com.banking.dto.TransactionResponse;
 import com.banking.exception.InvalidTransferException;
+import com.banking.exception.UnauthorizedAccountAccessException;
 import com.banking.mapper.TransactionMapper;
 import com.banking.model.Account;
 import com.banking.model.Transaction.TransactionType;
@@ -37,16 +38,23 @@ public class TransactionService implements ITransactionService {
 
     @Override
     public TransactionResponse createTransaction(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
-        return switch (request.type()) {
+        return switch (inferType(request)) {
             case TRANSFER -> transfer(request, callerUserId, performedBy, isEmployee);
-            case DEPOSIT -> deposit(request, callerUserId, performedBy);
-            case WITHDRAWAL -> withdrawal(request, callerUserId, performedBy);
+            case DEPOSIT -> deposit(request, callerUserId, performedBy, isEmployee);
+            case WITHDRAWAL -> withdrawal(request, callerUserId, performedBy, isEmployee);
         };
     }
 
+    private TransactionType inferType(TransactionRequest request) {
+        boolean hasFrom = request.fromIban() != null && !request.fromIban().isBlank();
+        boolean hasTo = request.toIban() != null && !request.toIban().isBlank();
+        if (hasFrom && hasTo) return TransactionType.TRANSFER;
+        if (hasTo) return TransactionType.DEPOSIT;
+        if (hasFrom) return TransactionType.WITHDRAWAL;
+        throw new InvalidTransferException("Either fromIban or toIban must be provided");
+    }
+
     private TransactionResponse transfer(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
-        validateNotBlank(request.fromIban(), "fromIban is required for transfers");
-        validateNotBlank(request.toIban(), "toIban is required for transfers");
         transactionPolicy.requireDifferentAccounts(request.fromIban(), request.toIban());
         Account from = accountRepository.findRequiredActiveById(request.fromIban());
         Account to   = accountRepository.findRequiredActiveById(request.toIban());
@@ -64,8 +72,8 @@ public class TransactionService implements ITransactionService {
         ));
     }
 
-    private TransactionResponse deposit(TransactionRequest request, Long callerUserId, String performedBy) {
-        validateNotBlank(request.toIban(), "toIban is required for deposits");
+    private TransactionResponse deposit(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
+        requireCustomer(isEmployee);
         Account account = accountRepository.findRequiredActiveById(request.toIban());
         transactionPolicy.requireCallerOwnsAccount(account, callerUserId);
         account.credit(request.amount());
@@ -75,8 +83,8 @@ public class TransactionService implements ITransactionService {
         ));
     }
 
-    private TransactionResponse withdrawal(TransactionRequest request, Long callerUserId, String performedBy) {
-        validateNotBlank(request.fromIban(), "fromIban is required for withdrawals");
+    private TransactionResponse withdrawal(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
+        requireCustomer(isEmployee);
         Account account = accountRepository.findRequiredActiveById(request.fromIban());
         transactionPolicy.requireCallerOwnsAccount(account, callerUserId);
         deductWithLimitChecks(account, request.amount());
@@ -97,9 +105,9 @@ public class TransactionService implements ITransactionService {
         return transactionRepository.findByFilter(filter, pageable).map(transactionMapper::toResponse);
     }
 
-    private void validateNotBlank(String value, String message) {
-        if (value == null || value.isBlank()) {
-            throw new InvalidTransferException(message);
+    private void requireCustomer(boolean isEmployee) {
+        if (isEmployee) {
+            throw new UnauthorizedAccountAccessException("Deposits and withdrawals are only available to customers");
         }
     }
 

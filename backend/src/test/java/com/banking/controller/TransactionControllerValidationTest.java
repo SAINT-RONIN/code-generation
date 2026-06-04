@@ -34,8 +34,6 @@ class TransactionControllerValidationTest {
                 .build();
     }
 
-    // ── Create transaction validation ────────────────────
-
     @Test
     void createTransactionRejectsMissingAmount() throws Exception {
         mockMvc.perform(post("/api/transactions")
@@ -43,8 +41,7 @@ class TransactionControllerValidationTest {
                         .content("""
                                 {
                                   "fromIban": "NL01BANK0123456789",
-                                  "toIban": "NL02BANK0123456789",
-                                  "type": "TRANSFER"
+                                  "toIban": "NL02BANK0123456789"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
@@ -61,8 +58,7 @@ class TransactionControllerValidationTest {
                                 {
                                   "fromIban": "NL01BANK0123456789",
                                   "toIban": "NL02BANK0123456789",
-                                  "amount": 0.00,
-                                  "type": "TRANSFER"
+                                  "amount": 0.00
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
@@ -79,29 +75,11 @@ class TransactionControllerValidationTest {
                                 {
                                   "fromIban": "NL01BANK0123456789",
                                   "toIban": "NL02BANK0123456789",
-                                  "amount": -50.00,
-                                  "type": "TRANSFER"
+                                  "amount": -50.00
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(containsString("amount")));
-
-        verifyNoInteractions(transactionService);
-    }
-
-    @Test
-    void createTransactionRejectsMissingType() throws Exception {
-        mockMvc.perform(post("/api/transactions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "fromIban": "NL01BANK0123456789",
-                                  "toIban": "NL02BANK0123456789",
-                                  "amount": 100.00
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(containsString("type")));
 
         verifyNoInteractions(transactionService);
     }
