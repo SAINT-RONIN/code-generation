@@ -2,17 +2,20 @@ import { useRouter } from 'vue-router'
 
 export const ROLES = { CUSTOMER: 'CUSTOMER', EMPLOYEE: 'EMPLOYEE' }
 
-export function getToken() { return localStorage.getItem('token') }
-export function getRole() { return localStorage.getItem('role') }
+let _token = null
+let _role = null
+
+export function getToken() { return _token }
+export function getRole() { return _role }
 
 export function setAuth(token, role) {
-  localStorage.setItem('token', token)
-  localStorage.setItem('role', role)
+  _token = token
+  _role = role
 }
 
 export function clearAuth() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
+  _token = null
+  _role = null
 }
 
 export function useAuth() {

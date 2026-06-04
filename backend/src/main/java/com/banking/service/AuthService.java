@@ -32,7 +32,17 @@ public class AuthService implements IAuthService {
     @Override
     public User register(RegisterRequest request) {
         userRepository.ensureEmailAvailable(request.email());
-        return userRepository.save(buildCustomerFrom(request));
+        User user = new User(
+                request.firstName(),
+                request.lastName(),
+                request.email(),
+                passwordEncoder.encode(request.password()),
+                request.bsn(),
+                request.phoneNumber(),
+                User.Role.CUSTOMER
+        );
+        user.setStatus(UserStatus.PENDING);
+        return userRepository.save(user);
     }
 
     @Override
@@ -67,17 +77,4 @@ public class AuthService implements IAuthService {
         }
     }
 
-    private User buildCustomerFrom(RegisterRequest request) {
-        User user = new User(
-                request.firstName(),
-                request.lastName(),
-                request.email(),
-                passwordEncoder.encode(request.password()),
-                request.bsn(),
-                request.phoneNumber(),
-                User.Role.CUSTOMER
-        );
-        user.setStatus(UserStatus.PENDING);
-        return user;
-    }
 }
