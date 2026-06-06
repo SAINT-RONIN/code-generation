@@ -20,6 +20,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,6 +49,7 @@ class AuthServiceTest {
 
     // ── Register ────────────────────
 
+    // Verifies that registration checks email uniqueness, hashes the password, and persists the user
     @Test
     void registerSavesNewCustomer() {
         RegisterRequest request = new RegisterRequest("John", "Doe", "john@example.com",
@@ -63,6 +67,7 @@ class AuthServiceTest {
 
     // ── Login ────────────────────
 
+    // Happy path: valid credentials on an active account should return a JWT token and the user's role
     @Test
     void loginReturnsTokenForActiveUser() {
         LoginRequest request = new LoginRequest("john@example.com", "password");
@@ -79,6 +84,7 @@ class AuthServiceTest {
         assertEquals("CUSTOMER", result.role());
     }
 
+    // Wrong password must reject login and never generate a token
     @Test
     void loginThrowsWhenPasswordIsWrong() {
         LoginRequest request = new LoginRequest("john@example.com", "wrong-password");
@@ -87,8 +93,11 @@ class AuthServiceTest {
         when(passwordEncoder.matches("wrong-password", "encoded-pass")).thenReturn(false);
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
+
+        verify(jwtUtil, never()).generateToken(anyLong(), anyString());
     }
 
+    // Pending accounts must not log in — the flow should stop before password check or token generation
     @Test
     void loginThrowsWhenAccountIsPending() {
         activeCustomer.setStatus(UserStatus.PENDING);
@@ -97,8 +106,12 @@ class AuthServiceTest {
         when(userRepository.findRequiredByEmail("john@example.com")).thenReturn(activeCustomer);
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
+
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(jwtUtil, never()).generateToken(anyLong(), anyString());
     }
 
+    // Closed accounts must not log in — the flow should stop before password check or token generation
     @Test
     void loginThrowsWhenAccountIsClosed() {
         activeCustomer.setStatus(UserStatus.CLOSED);
@@ -107,10 +120,14 @@ class AuthServiceTest {
         when(userRepository.findRequiredByEmail("john@example.com")).thenReturn(activeCustomer);
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
+
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(jwtUtil, never()).generateToken(anyLong(), anyString());
     }
 
     // ── Verify PIN ────────────────────
 
+    // Correct PIN should pass without throwing — used before ATM operations
     @Test
     void verifyPinPassesWhenPinMatches() {
         activeCustomer.setPin("encoded-pin");
@@ -123,6 +140,7 @@ class AuthServiceTest {
         verify(userRepository).findRequiredById(1L);
     }
 
+    // Wrong PIN must be rejected to prevent unauthorized ATM access
     @Test
     void verifyPinThrowsWhenPinIsWrong() {
         activeCustomer.setPin("encoded-pin");
@@ -133,6 +151,7 @@ class AuthServiceTest {
         assertThrows(BadCredentialsException.class, () -> authService.verifyPin(1L, "0000"));
     }
 
+    // A user who never set a PIN should be rejected rather than crashing on a null comparison
     @Test
     void verifyPinThrowsWhenPinIsNull() {
         activeCustomer.setPin(null);

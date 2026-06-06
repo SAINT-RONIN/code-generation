@@ -36,17 +36,23 @@ public class TransactionService implements ITransactionService {
         this.transactionPolicy = transactionPolicy;
     }
 
-    // Create a transaction, type is inferred from which IBANs are provided
     @Override
-    public TransactionResponse createTransaction(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
+    public TransactionResponse createCustomerTransaction(TransactionRequest request, Long callerUserId, String performedBy) {
         return switch (inferType(request)) {
-            case TRANSFER -> transfer(request, callerUserId, performedBy, isEmployee);
-            case DEPOSIT -> deposit(request, callerUserId, performedBy, isEmployee);
-            case WITHDRAWAL -> withdrawal(request, callerUserId, performedBy, isEmployee);
+            case TRANSFER -> customerTransfer(request, callerUserId, performedBy);
+            case DEPOSIT -> deposit(request, callerUserId, performedBy);
+            case WITHDRAWAL -> withdrawal(request, callerUserId, performedBy);
         };
     }
 
-    // Determine transaction type: both IBANs = transfer, only toIban = deposit, only fromIban = withdrawal
+    @Override
+    public TransactionResponse createEmployeeTransfer(TransactionRequest request, String performedBy) {
+        if (inferType(request) != TransactionType.TRANSFER) {
+            throw new UnauthorizedAccountAccessException("Deposits and withdrawals are only available to customers");
+        }
+        return employeeTransfer(request, performedBy);
+    }
+
     private TransactionType inferType(TransactionRequest request) {
         boolean hasFrom = request.fromIban() != null && !request.fromIban().isBlank();
         boolean hasTo = request.toIban() != null && !request.toIban().isBlank();
@@ -56,17 +62,12 @@ public class TransactionService implements ITransactionService {
         throw new InvalidTransferException("Either fromIban or toIban must be provided");
     }
 
-    // Move money between two accounts. Customers can transfer to own or others, employees between different customers
-    private TransactionResponse transfer(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
+    private TransactionResponse customerTransfer(TransactionRequest request, Long callerUserId, String performedBy) {
         transactionPolicy.requireDifferentAccounts(request.fromIban(), request.toIban());
         Account from = accountRepository.findRequiredActiveById(request.fromIban());
-        Account to   = accountRepository.findRequiredActiveById(request.toIban());
-        if (isEmployee) {
-            transactionPolicy.validateEmployeeTransfer(from, to);
-        } else {
-            transactionPolicy.requireCallerOwnsAccount(from, callerUserId);
-            transactionPolicy.validateCustomerTransfer(from, to);
-        }
+        Account to = accountRepository.findRequiredActiveById(request.toIban());
+        transactionPolicy.requireCallerOwnsAccount(from, callerUserId);
+        transactionPolicy.validateCustomerTransfer(from, to);
         deductWithLimitChecks(from, request.amount());
         to.credit(request.amount());
         return transactionMapper.toResponse(transactionRepository.record(
@@ -75,9 +76,20 @@ public class TransactionService implements ITransactionService {
         ));
     }
 
-    // ATM deposit, adds money to the customer's account (customers only)
-    private TransactionResponse deposit(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
-        requireCustomer(isEmployee);
+    private TransactionResponse employeeTransfer(TransactionRequest request, String performedBy) {
+        transactionPolicy.requireDifferentAccounts(request.fromIban(), request.toIban());
+        Account from = accountRepository.findRequiredActiveById(request.fromIban());
+        Account to = accountRepository.findRequiredActiveById(request.toIban());
+        transactionPolicy.validateEmployeeTransfer(from, to);
+        deductWithLimitChecks(from, request.amount());
+        to.credit(request.amount());
+        return transactionMapper.toResponse(transactionRepository.record(
+                request.fromIban(), request.toIban(), request.amount(),
+                performedBy, request.description(), TransactionType.TRANSFER
+        ));
+    }
+
+    private TransactionResponse deposit(TransactionRequest request, Long callerUserId, String performedBy) {
         Account account = accountRepository.findRequiredActiveById(request.toIban());
         transactionPolicy.requireCallerOwnsAccount(account, callerUserId);
         account.credit(request.amount());
@@ -87,9 +99,7 @@ public class TransactionService implements ITransactionService {
         ));
     }
 
-    // ATM withdrawal, takes money from the customer's account (customers only)
-    private TransactionResponse withdrawal(TransactionRequest request, Long callerUserId, String performedBy, boolean isEmployee) {
-        requireCustomer(isEmployee);
+    private TransactionResponse withdrawal(TransactionRequest request, Long callerUserId, String performedBy) {
         Account account = accountRepository.findRequiredActiveById(request.fromIban());
         transactionPolicy.requireCallerOwnsAccount(account, callerUserId);
         deductWithLimitChecks(account, request.amount());
@@ -99,25 +109,19 @@ public class TransactionService implements ITransactionService {
         ));
     }
 
-    // Get transaction history. Customers see only their own, employees see all
     @Override
     @Transactional(readOnly = true)
-    public Page<TransactionResponse> findTransactions(TransactionFilter filter, Pageable pageable,
-                                                          Long callerUserId, boolean isEmployee) {
-        if (!isEmployee) {
-            return transactionRepository.findByFilterForUser(filter, pageable, accountRepository.findOwnedIbansByUserId(callerUserId))
-                    .map(transactionMapper::toResponse);
-        }
+    public Page<TransactionResponse> findCustomerTransactions(TransactionFilter filter, Pageable pageable, Long callerUserId) {
+        return transactionRepository.findByFilterForUser(filter, pageable, accountRepository.findOwnedIbansByUserId(callerUserId))
+                .map(transactionMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> findAllTransactions(TransactionFilter filter, Pageable pageable) {
         return transactionRepository.findByFilter(filter, pageable).map(transactionMapper::toResponse);
     }
 
-    private void requireCustomer(boolean isEmployee) {
-        if (isEmployee) {
-            throw new UnauthorizedAccountAccessException("Deposits and withdrawals are only available to customers");
-        }
-    }
-
-    // Debit the account after checking absolute limit and daily limit
     private void deductWithLimitChecks(Account account, BigDecimal amount) {
         transactionPolicy.enforceAbsoluteLimit(account, amount);
         BigDecimal todaySpent = transactionRepository.sumOutgoingTodayForIban(account.getIban());

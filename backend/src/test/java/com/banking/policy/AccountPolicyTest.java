@@ -18,12 +18,14 @@ class AccountPolicyTest {
         policy = new AccountPolicy();
     }
 
+    // Active customers should be allowed to have accounts created for them
     @Test
     void requireActiveCustomerPassesWhenActive() {
         User customer = buildCustomer(UserStatus.ACTIVE);
         assertDoesNotThrow(() -> policy.requireActiveCustomer(customer));
     }
 
+    // Pending customers haven't been approved yet — they should not get new accounts
     @Test
     void requireActiveCustomerThrowsWhenPending() {
         User customer = buildCustomer(UserStatus.PENDING);
@@ -31,6 +33,7 @@ class AccountPolicyTest {
                 () -> policy.requireActiveCustomer(customer));
     }
 
+    // Closed customers should not get new accounts
     @Test
     void requireActiveCustomerThrowsWhenClosed() {
         User customer = buildCustomer(UserStatus.CLOSED);

@@ -1,157 +1,369 @@
 package com.banking.controller;
 
-import com.banking.dto.TransactionResponse;
-import com.banking.exception.AccountNotFoundException;
-import com.banking.exception.GlobalExceptionHandler;
-import com.banking.exception.InsufficientFundsException;
-import com.banking.exception.UnauthorizedAccountAccessException;
-import com.banking.security.AuthenticatedUser;
-import com.banking.service.interfaces.ITransactionService;
+import com.banking.model.Account;
+import com.banking.model.Account.AccountType;
+import com.banking.model.User;
+import com.banking.model.User.UserStatus;
+import com.banking.repository.AccountRepository;
+import com.banking.repository.UserRepository;
+import com.banking.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.MethodParameter;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.support.WebDataBinderFactory;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
 class TransactionControllerTest {
 
-    private MockMvc mockMvc;
-    private ITransactionService transactionService;
-    private TransactionResponse transactionResponse;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserRepository userRepository;
+    @Autowired private AccountRepository accountRepository;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private PasswordEncoder passwordEncoder;
+
+    private String customerToken;
+    private String employeeToken;
 
     @BeforeEach
     void setUp() {
-        transactionService = mock(ITransactionService.class);
+        User customer1 = new User("Alice", "Test", "alice@functest.com",
+                passwordEncoder.encode("pass"), "111111111", "0600000001", User.Role.CUSTOMER);
+        customer1.setStatus(UserStatus.ACTIVE);
+        customer1 = userRepository.save(customer1);
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new TransactionController(transactionService))
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .setCustomArgumentResolvers(mockAuthUser(), new PageableHandlerMethodArgumentResolver())
-                .build();
+        accountRepository.save(new Account("NL01FUNC0001", AccountType.CHECKING,
+                new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer1));
+        accountRepository.save(new Account("NL02FUNC0001", AccountType.SAVINGS,
+                new BigDecimal("500.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer1));
 
-        transactionResponse = new TransactionResponse(1L, "NL01TEST", "NL02TEST",
-                new BigDecimal("200.00"), LocalDateTime.now(), "test@test.com", "Payment", "TRANSFER");
+        User customer2 = new User("Bob", "Test", "bob@functest.com",
+                passwordEncoder.encode("pass"), "222222222", "0600000002", User.Role.CUSTOMER);
+        customer2.setStatus(UserStatus.ACTIVE);
+        customer2 = userRepository.save(customer2);
+
+        accountRepository.save(new Account("NL03FUNC0001", AccountType.CHECKING,
+                new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer2));
+
+        User employee = userRepository.findByEmail("employee@bank.com").orElseThrow();
+
+        customerToken = jwtUtil.generateToken(customer1.getId(), customer1.getEmail());
+        employeeToken = jwtUtil.generateToken(employee.getId(), employee.getEmail());
     }
 
-    // ── POST /api/transactions ────────────────────
+    // ── Customer transfer with balance check ────────────────────
 
+    // Transfer between own accounts: checking balance should decrease and savings should increase
     @Test
-    void createTransactionReturns201OnSuccess() throws Exception {
-        when(transactionService.createTransaction(any(), anyLong(), anyString(), anyBoolean()))
-                .thenReturn(transactionResponse);
-
+    void customerTransferDebitsSourceAndCreditsDestination() throws Exception {
         mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validTransferBody()))
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL02FUNC0001",
+                                  "amount": 200.00,
+                                  "description": "Transfer to savings"
+                                }
+                                """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.fromIban").value("NL01TEST"))
-                .andExpect(jsonPath("$.toIban").value("NL02TEST"))
+                .andExpect(jsonPath("$.transactionType").value("TRANSFER"))
+                .andExpect(jsonPath("$.fromIban").value("NL01FUNC0001"))
+                .andExpect(jsonPath("$.toIban").value("NL02FUNC0001"));
+
+        assertEquals(0, new BigDecimal("800.00").compareTo(accountRepository.findById("NL01FUNC0001").orElseThrow().getBalance()));
+        assertEquals(0, new BigDecimal("700.00").compareTo(accountRepository.findById("NL02FUNC0001").orElseThrow().getBalance()));
+    }
+
+    // Customers can send money to another customer's checking account
+    @Test
+    void customerTransferToOtherCustomerChecking() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL03FUNC0001",
+                                  "amount": 150.00,
+                                  "description": "Payment"
+                                }
+                                """))
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.transactionType").value("TRANSFER"));
 
-        verify(transactionService).createTransaction(any(), anyLong(), anyString(), anyBoolean());
+        assertEquals(0, new BigDecimal("850.00").compareTo(accountRepository.findById("NL01FUNC0001").orElseThrow().getBalance()));
+        assertEquals(0, new BigDecimal("1150.00").compareTo(accountRepository.findById("NL03FUNC0001").orElseThrow().getBalance()));
     }
 
-    @Test
-    void createTransactionReturns422WhenInsufficientFunds() throws Exception {
-        when(transactionService.createTransaction(any(), anyLong(), anyString(), anyBoolean()))
-                .thenThrow(new InsufficientFundsException("NL01TEST"));
+    // ── Deposit with balance check ────────────────────
 
+    // ATM deposit should increase the account balance
+    @Test
+    void customerDepositCreditsAccount() throws Exception {
         mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validTransferBody()))
+                        .content("""
+                                {
+                                  "toIban": "NL01FUNC0001",
+                                  "amount": 300.00,
+                                  "description": "ATM deposit"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.transactionType").value("DEPOSIT"));
+
+        assertEquals(0, new BigDecimal("1300.00").compareTo(accountRepository.findById("NL01FUNC0001").orElseThrow().getBalance()));
+    }
+
+    // ── Withdrawal with balance check ────────────────────
+
+    // ATM withdrawal should decrease the account balance
+    @Test
+    void customerWithdrawalDebitsAccount() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "amount": 100.00,
+                                  "description": "ATM withdrawal"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.transactionType").value("WITHDRAWAL"));
+
+        assertEquals(0, new BigDecimal("900.00").compareTo(accountRepository.findById("NL01FUNC0001").orElseThrow().getBalance()));
+    }
+
+    // ── Error handling ────────────────────
+
+    // Transferring more than the balance allows should fail and leave the balance unchanged
+    @Test
+    void transferReturns422WhenInsufficientFunds() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL02FUNC0001",
+                                  "amount": 5000.00,
+                                  "description": "Too much"
+                                }
+                                """))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error").exists());
+
+        assertEquals(0, new BigDecimal("1000.00").compareTo(accountRepository.findById("NL01FUNC0001").orElseThrow().getBalance()));
     }
 
+    // Customers can only transfer from accounts they own
     @Test
-    void createTransactionReturns403WhenUnauthorized() throws Exception {
-        when(transactionService.createTransaction(any(), anyLong(), anyString(), anyBoolean()))
-                .thenThrow(new UnauthorizedAccountAccessException("Not your account"));
-
+    void transferReturns403WhenCustomerDoesNotOwnAccount() throws Exception {
         mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validTransferBody()))
+                        .content("""
+                                {
+                                  "fromIban": "NL03FUNC0001",
+                                  "toIban": "NL01FUNC0001",
+                                  "amount": 100.00,
+                                  "description": "Not my account"
+                                }
+                                """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").exists());
     }
 
+    // Transferring to a non-existent IBAN should return 404
     @Test
-    void createTransactionReturns404WhenAccountNotFound() throws Exception {
-        when(transactionService.createTransaction(any(), anyLong(), anyString(), anyBoolean()))
-                .thenThrow(new AccountNotFoundException("NL99TEST"));
-
+    void transferReturns404WhenAccountDoesNotExist() throws Exception {
         mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validTransferBody()))
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL99NONEXIST",
+                                  "amount": 100.00,
+                                  "description": "No such account"
+                                }
+                                """))
                 .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    // ── Employee transfer ────────────────────
+
+    // Employees can transfer between checking accounts of different customers
+    @Test
+    void employeeTransferBetweenDifferentCustomers() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL03FUNC0001",
+                                  "amount": 100.00,
+                                  "description": "Employee transfer"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.transactionType").value("TRANSFER"));
+
+        assertEquals(0, new BigDecimal("900.00").compareTo(accountRepository.findById("NL01FUNC0001").orElseThrow().getBalance()));
+        assertEquals(0, new BigDecimal("1100.00").compareTo(accountRepository.findById("NL03FUNC0001").orElseThrow().getBalance()));
+    }
+
+    // Deposits are ATM-only — employees must be blocked from performing them
+    @Test
+    void employeeCannotDeposit() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "toIban": "NL01FUNC0001",
+                                  "amount": 100.00,
+                                  "description": "Deposit attempt"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    // Withdrawals are ATM-only — employees must be blocked from performing them
+    @Test
+    void employeeCannotWithdraw() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "amount": 100.00,
+                                  "description": "Withdrawal attempt"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").exists());
     }
 
     // ── GET /api/transactions ────────────────────
 
+    // Customers should only see transactions involving their own accounts
     @Test
-    void getTransactionsReturns200WithPage() throws Exception {
-        when(transactionService.findTransactions(any(), any(), anyLong(), anyBoolean()))
-                .thenReturn(new PageImpl<>(List.of(transactionResponse), PageRequest.of(0, 10), 1));
+    void customerSeesOwnTransactionsOnly() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "toIban": "NL01FUNC0001",
+                                  "amount": 50.00,
+                                  "description": "Deposit"
+                                }
+                                """))
+                .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/api/transactions"))
+        mockMvc.perform(get("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].fromIban").value("NL01TEST"))
-                .andExpect(jsonPath("$.content[0].transactionType").value("TRANSFER"));
+                .andExpect(jsonPath("$.content").isArray());
     }
 
-    // ── Helpers ────────────────────
-
-    private String validTransferBody() {
-        return """
-                {
-                  "fromIban": "NL01TEST",
-                  "toIban": "NL02TEST",
-                  "amount": 200.00,
-                  "description": "Payment"
-                }
-                """;
+    // Employees should see all transactions across all customers
+    @Test
+    void employeeSeesAllTransactions() throws Exception {
+        mockMvc.perform(get("/api/transactions")
+                        .header("Authorization", "Bearer " + employeeToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
     }
 
-    private HandlerMethodArgumentResolver mockAuthUser() {
-        AuthenticatedUser user = new AuthenticatedUser(1L, "test@test.com", "pass", true,
-                List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+    // ── Validation rules ────────────────────
 
-        return new HandlerMethodArgumentResolver() {
-            @Override
-            public boolean supportsParameter(MethodParameter parameter) {
-                return parameter.getParameterType().equals(AuthenticatedUser.class);
-            }
+    // Amount is required — omitting it should return 400 before reaching the service
+    @Test
+    void rejectsMissingAmount() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL02FUNC0001"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
 
-            @Override
-            public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                          NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-                return user;
-            }
-        };
+    // Zero is not a valid transaction amount
+    @Test
+    void rejectsZeroAmount() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL02FUNC0001",
+                                  "amount": 0.00
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    // Negative amounts must be rejected to prevent reverse transfers
+    @Test
+    void rejectsNegativeAmount() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL02FUNC0001",
+                                  "amount": -50.00
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    // Requests without a JWT token should be rejected by Spring Security
+    @Test
+    void rejectsUnauthenticatedRequest() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fromIban": "NL01FUNC0001",
+                                  "toIban": "NL02FUNC0001",
+                                  "amount": 100.00
+                                }
+                                """))
+                .andExpect(status().isForbidden());
     }
 }

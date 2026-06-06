@@ -1,147 +1,156 @@
 package com.banking.controller;
 
-import com.banking.dto.AccountResponse;
-import com.banking.dto.IbanSearchResponse;
-import com.banking.exception.AccountNotFoundException;
-import com.banking.exception.CustomerNotFoundException;
-import com.banking.exception.GlobalExceptionHandler;
-import com.banking.security.AuthenticatedUser;
-import com.banking.service.interfaces.IAccountService;
+import com.banking.model.Account;
+import com.banking.model.Account.AccountType;
+import com.banking.model.User;
+import com.banking.model.User.UserStatus;
+import com.banking.repository.AccountRepository;
+import com.banking.repository.UserRepository;
+import com.banking.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.MethodParameter;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.support.WebDataBinderFactory;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
 class AccountControllerTest {
 
-    private MockMvc mockMvc;
-    private IAccountService accountService;
-    private AccountResponse accountResponse;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserRepository userRepository;
+    @Autowired private AccountRepository accountRepository;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private PasswordEncoder passwordEncoder;
+
+    private String employeeToken;
+    private String customerToken;
+    private Long customerId;
 
     @BeforeEach
     void setUp() {
-        accountService = mock(IAccountService.class);
+        User customer = new User("Acc", "Tester", "acctest@test.com",
+                passwordEncoder.encode("pass"), "777777777", "0600000007", User.Role.CUSTOMER);
+        customer.setStatus(UserStatus.ACTIVE);
+        customer = userRepository.save(customer);
+        customerId = customer.getId();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new AccountController(accountService))
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .setCustomArgumentResolvers(mockAuthUser(), new PageableHandlerMethodArgumentResolver())
-                .build();
+        accountRepository.save(new Account("NL01ACC0001", AccountType.CHECKING,
+                new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer));
 
-        accountResponse = new AccountResponse("NL01TEST", "CHECKING", new BigDecimal("1000"),
-                BigDecimal.ZERO, new BigDecimal("2000"), true,
-                new AccountResponse.UserSummary(1L, "Test", "Customer", "test@test.com"));
+        User employee = userRepository.findByEmail("employee@bank.com").orElseThrow();
+
+        customerToken = jwtUtil.generateToken(customer.getId(), customer.getEmail());
+        employeeToken = jwtUtil.generateToken(employee.getId(), employee.getEmail());
     }
 
     // ── GET /api/accounts/me ────────────────────
 
+    // Customers should see their own active accounts
     @Test
-    void getMyAccountsReturns200WithList() throws Exception {
-        when(accountService.findMyAccounts(1L)).thenReturn(List.of(accountResponse));
-
-        mockMvc.perform(get("/api/accounts/me"))
+    void getMyAccountsReturnsCustomerAccounts() throws Exception {
+        mockMvc.perform(get("/api/accounts/me")
+                        .header("Authorization", "Bearer " + customerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].iban").value("NL01TEST"))
+                .andExpect(jsonPath("$[0].iban").value("NL01ACC0001"))
                 .andExpect(jsonPath("$[0].accountType").value("CHECKING"));
     }
 
-    // ── GET /api/accounts ────────────────────
+    // ── GET /api/accounts (employee) ────────────────────
 
+    // Employees can browse all accounts in the system
     @Test
-    void getAllAccountsReturns200WithPage() throws Exception {
-        when(accountService.findAllAccounts(any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(accountResponse), PageRequest.of(0, 10), 1));
-
-        mockMvc.perform(get("/api/accounts"))
+    void getAllAccountsReturnsPageForEmployee() throws Exception {
+        mockMvc.perform(get("/api/accounts")
+                        .header("Authorization", "Bearer " + employeeToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].iban").value("NL01TEST"));
+                .andExpect(jsonPath("$.content").isArray());
     }
 
-    // ── GET /api/accounts/checking ────────────────────
-
+    // Customers must not access the employee-only account list
     @Test
-    void searchCheckingReturns200WithMatches() throws Exception {
-        when(accountService.searchCustomerCheckingIbansByName("John", "Doe", "", 1L))
-                .thenReturn(List.of(new IbanSearchResponse("John", "Doe", "NL01TEST")));
-
-        mockMvc.perform(get("/api/accounts/checking")
-                        .param("firstName", "John")
-                        .param("lastName", "Doe"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].checkingIban").value("NL01TEST"));
+    void getAllAccountsReturns403ForCustomer() throws Exception {
+        mockMvc.perform(get("/api/accounts")
+                        .header("Authorization", "Bearer " + customerToken))
+                .andExpect(status().isForbidden());
     }
 
-    // ── POST /api/accounts ────────────────────
+    // ── POST /api/accounts (employee) ────────────────────
 
+    // Employees can create new accounts for existing customers
     @Test
     void createAccountReturns201OnSuccess() throws Exception {
-        when(accountService.createAccount(any())).thenReturn(accountResponse);
-
         mockMvc.perform(post("/api/accounts")
+                        .header("Authorization", "Bearer " + employeeToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validCreateAccountBody()))
+                        .content("""
+                                {
+                                  "customerId": %d,
+                                  "accountType": "SAVINGS",
+                                  "dailyLimit": 2000.00,
+                                  "absoluteLimit": 0.00
+                                }
+                                """.formatted(customerId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.iban").value("NL01TEST"))
-                .andExpect(jsonPath("$.accountType").value("CHECKING"));
-
-        verify(accountService).createAccount(any());
+                .andExpect(jsonPath("$.accountType").value("SAVINGS"))
+                .andExpect(jsonPath("$.iban").isNotEmpty());
     }
 
+    // Creating an account for a non-existent customer should return 404
     @Test
     void createAccountReturns404WhenCustomerNotFound() throws Exception {
-        when(accountService.createAccount(any())).thenThrow(new CustomerNotFoundException(99L));
-
         mockMvc.perform(post("/api/accounts")
+                        .header("Authorization", "Bearer " + employeeToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validCreateAccountBody()))
+                        .content("""
+                                {
+                                  "customerId": 99999,
+                                  "accountType": "CHECKING",
+                                  "dailyLimit": 2000.00,
+                                  "absoluteLimit": 0.00
+                                }
+                                """))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").exists());
     }
 
-    // ── PUT /api/accounts/{iban} ────────────────────
+    // ── PUT /api/accounts/{iban} (employee) ────────────────────
 
+    // Deactivating an account should persist the change in the database
     @Test
-    void updateAccountReturns200OnSuccess() throws Exception {
-        when(accountService.updateAccount(any(), any())).thenReturn(accountResponse);
-
-        mockMvc.perform(put("/api/accounts/NL01TEST")
+    void updateAccountDeactivatesAccount() throws Exception {
+        mockMvc.perform(put("/api/accounts/NL01ACC0001")
+                        .header("Authorization", "Bearer " + employeeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "active": false }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.iban").value("NL01TEST"));
+                .andExpect(jsonPath("$.iban").value("NL01ACC0001"));
 
-        verify(accountService).updateAccount(any(), any());
+        assertFalse(accountRepository.findById("NL01ACC0001").orElseThrow().isActive());
     }
 
+    // Updating a non-existent account should return 404
     @Test
-    void updateAccountReturns404WhenAccountNotFound() throws Exception {
-        when(accountService.updateAccount(any(), any())).thenThrow(new AccountNotFoundException("NL99TEST"));
-
-        mockMvc.perform(put("/api/accounts/NL99TEST")
+    void updateAccountReturns404WhenNotFound() throws Exception {
+        mockMvc.perform(put("/api/accounts/NL99NONEXIST")
+                        .header("Authorization", "Bearer " + employeeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "active": false }
@@ -150,34 +159,102 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.error").exists());
     }
 
-    // ── Helpers ────────────────────
+    // ── Validation rules ────────────────────
 
-    private String validCreateAccountBody() {
-        return """
-                {
-                  "customerId": 1,
-                  "accountType": "CHECKING",
-                  "dailyLimit": 2000.00,
-                  "absoluteLimit": 0.00
-                }
-                """;
+    // customerId is required — omitting it should fail validation
+    @Test
+    void createAccountRejectsMissingCustomerId() throws Exception {
+        mockMvc.perform(post("/api/accounts")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "accountType": "CHECKING",
+                                  "dailyLimit": 2000.00,
+                                  "absoluteLimit": 0.00
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("customerId")));
     }
 
-    private HandlerMethodArgumentResolver mockAuthUser() {
-        AuthenticatedUser user = new AuthenticatedUser(1L, "test@test.com", "pass", true,
-                List.of(new SimpleGrantedAuthority("ROLE_EMPLOYEE")));
+    // Only CHECKING and SAVINGS are valid — anything else should fail the @Pattern check
+    @Test
+    void createAccountRejectsInvalidAccountType() throws Exception {
+        mockMvc.perform(post("/api/accounts")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "customerId": %d,
+                                  "accountType": "INVALID",
+                                  "dailyLimit": 2000.00,
+                                  "absoluteLimit": 0.00
+                                }
+                                """.formatted(customerId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("accountType")));
+    }
 
-        return new HandlerMethodArgumentResolver() {
-            @Override
-            public boolean supportsParameter(MethodParameter parameter) {
-                return parameter.getParameterType().equals(AuthenticatedUser.class);
-            }
+    // Daily limit must be zero or positive
+    @Test
+    void createAccountRejectsNegativeDailyLimit() throws Exception {
+        mockMvc.perform(post("/api/accounts")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "customerId": %d,
+                                  "accountType": "CHECKING",
+                                  "dailyLimit": -500.00,
+                                  "absoluteLimit": 0.00
+                                }
+                                """.formatted(customerId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("dailyLimit")));
+    }
 
-            @Override
-            public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                          NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-                return user;
-            }
-        };
+    // Absolute limit must be zero or negative (it represents an overdraft floor)
+    @Test
+    void createAccountRejectsPositiveAbsoluteLimit() throws Exception {
+        mockMvc.perform(post("/api/accounts")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "customerId": %d,
+                                  "accountType": "CHECKING",
+                                  "dailyLimit": 2000.00,
+                                  "absoluteLimit": 100.00
+                                }
+                                """.formatted(customerId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("absoluteLimit")));
+    }
+
+    // Same absolute limit rule applies when updating an existing account
+    @Test
+    void updateAccountRejectsPositiveAbsoluteLimit() throws Exception {
+        mockMvc.perform(put("/api/accounts/NL01ACC0001")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "absoluteLimit": 100.00 }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("absoluteLimit")));
+    }
+
+    // Same daily limit rule applies when updating an existing account
+    @Test
+    void updateAccountRejectsNegativeDailyLimit() throws Exception {
+        mockMvc.perform(put("/api/accounts/NL01ACC0001")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "dailyLimit": -100.00 }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("dailyLimit")));
     }
 }

@@ -1,91 +1,130 @@
 package com.banking.controller;
 
-import com.banking.dto.CustomerResponse;
-import com.banking.exception.CustomerNotFoundException;
-import com.banking.exception.GlobalExceptionHandler;
-import com.banking.security.AuthenticatedUser;
-import com.banking.service.interfaces.ICustomerService;
+import com.banking.model.User;
+import com.banking.model.User.UserStatus;
+import com.banking.repository.AccountRepository;
+import com.banking.repository.UserRepository;
+import com.banking.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.MethodParameter;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.support.WebDataBinderFactory;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
 class CustomerControllerTest {
 
-    private MockMvc mockMvc;
-    private ICustomerService customerService;
-    private CustomerResponse customerResponse;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserRepository userRepository;
+    @Autowired private AccountRepository accountRepository;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private PasswordEncoder passwordEncoder;
+
+    private String employeeToken;
+    private String customerToken;
+    private Long pendingCustomerId;
 
     @BeforeEach
     void setUp() {
-        customerService = mock(ICustomerService.class);
+        User pending = new User("Pending", "Customer", "pendingcust@test.com",
+                passwordEncoder.encode("pass"), "888888888", "0600000008", User.Role.CUSTOMER);
+        pending.setStatus(UserStatus.PENDING);
+        pending = userRepository.save(pending);
+        pendingCustomerId = pending.getId();
 
-        mockMvc = MockMvcBuilders.standaloneSetup(new CustomerController(customerService))
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .setCustomArgumentResolvers(mockAuthUser(), new PageableHandlerMethodArgumentResolver())
-                .build();
+        User employee = userRepository.findByEmail("employee@bank.com").orElseThrow();
+        employeeToken = jwtUtil.generateToken(employee.getId(), employee.getEmail());
 
-        customerResponse = new CustomerResponse(2L, "John", "Doe",
-                "john@example.com", "123456789", "0612345678", "ACTIVE");
+        User customer = new User("Active", "Customer", "activecust@test.com",
+                passwordEncoder.encode("pass"), "999999999", "0600000009", User.Role.CUSTOMER);
+        customer.setStatus(UserStatus.ACTIVE);
+        customer = userRepository.save(customer);
+        customerToken = jwtUtil.generateToken(customer.getId(), customer.getEmail());
     }
 
-    // ── GET /api/customers ────────────────────
+    // ── GET /api/customers (employee only) ────────────────────
 
+    // Employees need to browse customers for approval and management
     @Test
-    void getCustomersReturns200WithPage() throws Exception {
-        when(customerService.findCustomers(any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(customerResponse), PageRequest.of(0, 10), 1));
-
-        mockMvc.perform(get("/api/customers"))
+    void getCustomersReturnsPageForEmployee() throws Exception {
+        mockMvc.perform(get("/api/customers")
+                        .header("Authorization", "Bearer " + employeeToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(2))
-                .andExpect(jsonPath("$.content[0].email").value("john@example.com"));
+                .andExpect(jsonPath("$.content").isArray());
     }
 
-    // ── PUT /api/customers/{id} ────────────────────
-
+    // Customer data is sensitive — only employees should access the list
     @Test
-    void updateCustomerReturns200OnSuccess() throws Exception {
-        when(customerService.updateCustomer(any(), any())).thenReturn(customerResponse);
+    void getCustomersReturns403ForCustomer() throws Exception {
+        mockMvc.perform(get("/api/customers")
+                        .header("Authorization", "Bearer " + customerToken))
+                .andExpect(status().isForbidden());
+    }
 
-        mockMvc.perform(put("/api/customers/2")
+    // ── PUT /api/customers/{id} — approve pending customer ────────────────────
+
+    // Approving a pending customer should set them to ACTIVE and create their bank accounts
+    @Test
+    void approvePendingCustomerActivatesAndCreatesAccounts() throws Exception {
+        mockMvc.perform(put("/api/customers/" + pendingCustomerId)
+                        .header("Authorization", "Bearer " + employeeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "status": "ACTIVE", "dailyLimit": 3000.00, "absoluteLimit": -100.00 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(2))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
 
-        verify(customerService).updateCustomer(any(), any());
+        assertEquals(UserStatus.ACTIVE, userRepository.findById(pendingCustomerId).orElseThrow().getStatus());
+        assertFalse(accountRepository.findByUserIdAndActiveTrue(pendingCustomerId).isEmpty());
     }
 
+    // ── PUT /api/customers/{id} — close customer ────────────────────
+
+    // Closing a customer should set their status to CLOSED (first approve, then close)
+    @Test
+    void closeCustomerDeactivatesAccounts() throws Exception {
+        mockMvc.perform(put("/api/customers/" + pendingCustomerId)
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "status": "ACTIVE", "dailyLimit": 2000.00, "absoluteLimit": 0.00 }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/customers/" + pendingCustomerId)
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "status": "CLOSED" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CLOSED"));
+
+        assertEquals(UserStatus.CLOSED, userRepository.findById(pendingCustomerId).orElseThrow().getStatus());
+    }
+
+    // ── PUT /api/customers/{id} — not found ────────────────────
+
+    // Updating a non-existent customer should return 404
     @Test
     void updateCustomerReturns404WhenNotFound() throws Exception {
-        when(customerService.updateCustomer(any(), any())).thenThrow(new CustomerNotFoundException(99L));
-
-        mockMvc.perform(put("/api/customers/99")
+        mockMvc.perform(put("/api/customers/99999")
+                        .header("Authorization", "Bearer " + employeeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "status": "ACTIVE" }
@@ -94,23 +133,31 @@ class CustomerControllerTest {
                 .andExpect(jsonPath("$.error").exists());
     }
 
-    // ── Helpers ────────────────────
+    // ── Validation rules ────────────────────
 
-    private HandlerMethodArgumentResolver mockAuthUser() {
-        AuthenticatedUser user = new AuthenticatedUser(1L, "employee@bank.com", "pass", true,
-                List.of(new SimpleGrantedAuthority("ROLE_EMPLOYEE")));
+    // Daily limit must be zero or positive
+    @Test
+    void updateCustomerRejectsNegativeDailyLimit() throws Exception {
+        mockMvc.perform(put("/api/customers/" + pendingCustomerId)
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "dailyLimit": -100.00 }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("dailyLimit")));
+    }
 
-        return new HandlerMethodArgumentResolver() {
-            @Override
-            public boolean supportsParameter(MethodParameter parameter) {
-                return parameter.getParameterType().equals(AuthenticatedUser.class);
-            }
-
-            @Override
-            public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                          NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-                return user;
-            }
-        };
+    // Absolute limit must be zero or negative (overdraft floor)
+    @Test
+    void updateCustomerRejectsPositiveAbsoluteLimit() throws Exception {
+        mockMvc.perform(put("/api/customers/" + pendingCustomerId)
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "absoluteLimit": 100.00 }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(containsString("absoluteLimit")));
     }
 }

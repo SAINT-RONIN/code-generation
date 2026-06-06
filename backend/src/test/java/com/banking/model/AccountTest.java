@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AccountTest {
 
+    // credit() should add the amount to the current balance
     @Test
     void creditIncreasesBalance() {
         Account account = buildAccount("500.00");
@@ -18,6 +19,7 @@ class AccountTest {
         assertEquals(new BigDecimal("600.00"), account.getBalance());
     }
 
+    // debit() should subtract the amount from the current balance
     @Test
     void debitDecreasesBalance() {
         Account account = buildAccount("500.00");
@@ -25,12 +27,14 @@ class AccountTest {
         assertEquals(new BigDecimal("400.00"), account.getBalance());
     }
 
+    // Accounts should be active by default so they are usable immediately after creation
     @Test
     void newAccountStartsActive() {
         Account account = buildAccount("0");
         assertTrue(account.isActive());
     }
 
+    // Deactivating an account should prevent it from being used in transactions
     @Test
     void deactivateSetsActiveFalse() {
         Account account = buildAccount("0");
@@ -38,6 +42,7 @@ class AccountTest {
         assertFalse(account.isActive());
     }
 
+    // Reactivating should restore the account to an active state
     @Test
     void activateRestoresActiveAfterDeactivate() {
         Account account = buildAccount("0");
@@ -46,6 +51,7 @@ class AccountTest {
         assertTrue(account.isActive());
     }
 
+    // Employees should be able to update the daily transfer limit
     @Test
     void updateDailyLimitChangesLimit() {
         Account account = buildAccount("0");
@@ -53,6 +59,7 @@ class AccountTest {
         assertEquals(new BigDecimal("5000.00"), account.getDailyLimit());
     }
 
+    // Employees should be able to update the overdraft floor
     @Test
     void updateAbsoluteLimitChangesLimit() {
         Account account = buildAccount("0");
@@ -60,6 +67,7 @@ class AccountTest {
         assertEquals(new BigDecimal("-500.00"), account.getAbsoluteLimit());
     }
 
+    // The convenience constructor (without balance) should default to zero
     @Test
     void constructorWithoutBalanceStartsAtZero() {
         Account account = new Account("NL01", AccountType.CHECKING, BigDecimal.ZERO, new BigDecimal("2000"), buildOwner());

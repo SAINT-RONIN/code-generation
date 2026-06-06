@@ -53,6 +53,7 @@ class CustomerServiceTest {
 
     // ── Approve customer (PENDING → ACTIVE) ────────────────────
 
+    // Approving a pending customer should activate them and create their checking + savings accounts
     @Test
     void approvePendingCustomerCreatesAccountsAndActivates() {
         CustomerUpdateRequest request = new CustomerUpdateRequest("ACTIVE",
@@ -68,6 +69,7 @@ class CustomerServiceTest {
         verify(accountRepository).saveAll(any());
     }
 
+    // When no limits are specified during approval, the service should apply sensible defaults
     @Test
     void approveWithDefaultLimitsWhenNoneProvided() {
         CustomerUpdateRequest request = new CustomerUpdateRequest("ACTIVE", null, null);
@@ -84,6 +86,7 @@ class CustomerServiceTest {
 
     // ── Close customer ────────────────────
 
+    // Closing a customer should mark them CLOSED and deactivate all their accounts
     @Test
     void closeCustomerDeactivatesAccounts() {
         CustomerUpdateRequest request = new CustomerUpdateRequest("CLOSED", null, null);
@@ -99,6 +102,7 @@ class CustomerServiceTest {
 
     // ── Reactivate closed customer ────────────────────
 
+    // Reactivating a closed customer should restore their status and re-enable their accounts
     @Test
     void reactivateClosedCustomerActivatesAccounts() {
         activeCustomer.setStatus(UserStatus.CLOSED);
@@ -115,6 +119,7 @@ class CustomerServiceTest {
 
     // ── Update limits ────────────────────
 
+    // Updating limits without changing status should only modify the account limits in the database
     @Test
     void updateLimitsCallsRepositoryUpdate() {
         CustomerUpdateRequest request = new CustomerUpdateRequest(null,

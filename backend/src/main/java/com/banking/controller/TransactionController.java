@@ -46,8 +46,13 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionResponse> createTransaction(@Valid @RequestBody TransactionRequest request,
                                                                   @AuthenticationPrincipal AuthenticatedUser caller) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(transactionService.createTransaction(request, caller.getId(), caller.getEmail(), caller.isEmployee()));
+        TransactionResponse response;
+        if (caller.isEmployee()) {
+            response = transactionService.createEmployeeTransfer(request, caller.getEmail());
+        } else {
+            response = transactionService.createCustomerTransaction(request, caller.getId(), caller.getEmail());
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Operation(summary = "Get filtered transaction history")
@@ -56,6 +61,12 @@ public class TransactionController {
     public ResponseEntity<Page<TransactionResponse>> getTransactions(@ModelAttribute TransactionFilter filter,
                                                                       Pageable pageable,
                                                                       @AuthenticationPrincipal AuthenticatedUser caller) {
-        return ResponseEntity.ok(transactionService.findTransactions(filter, pageable, caller.getId(), caller.isEmployee()));
+        Page<TransactionResponse> page;
+        if (caller.isEmployee()) {
+            page = transactionService.findAllTransactions(filter, pageable);
+        } else {
+            page = transactionService.findCustomerTransactions(filter, pageable, caller.getId());
+        }
+        return ResponseEntity.ok(page);
     }
 }

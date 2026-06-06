@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class   AccountServiceTest {
+class AccountServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private AccountRepository accountRepository;
@@ -58,6 +58,7 @@ class   AccountServiceTest {
 
     // ── Create account ────────────────────
 
+    // Verifies the full creation flow: find customer, check active status, generate IBAN, save, and return DTO
     @Test
     void createAccountSavesAndReturnsResponse() {
         AccountCreateRequest request = new AccountCreateRequest(1L, "CHECKING", new BigDecimal("2000"), BigDecimal.ZERO);
@@ -76,6 +77,7 @@ class   AccountServiceTest {
 
     // ── Find my accounts ────────────────────
 
+    // Ensures the service returns mapped DTOs for the customer's active accounts
     @Test
     void findMyAccountsReturnsMappedAccounts() {
         when(accountRepository.findByUserIdAndActiveTrue(1L)).thenReturn(List.of(checkingAccount));
@@ -87,6 +89,7 @@ class   AccountServiceTest {
         assertEquals("NL01TEST", result.get(0).iban());
     }
 
+    // A customer with no accounts should get an empty list, not an error
     @Test
     void findMyAccountsReturnsEmptyListWhenNoAccounts() {
         when(accountRepository.findByUserIdAndActiveTrue(1L)).thenReturn(List.of());
@@ -98,6 +101,7 @@ class   AccountServiceTest {
 
     // ── Update account ────────────────────
 
+    // Verifies that setting active=false actually deactivates the account entity
     @Test
     void updateAccountDeactivatesAccount() {
         AccountUpdateRequest request = new AccountUpdateRequest(false, null, null);
@@ -110,6 +114,7 @@ class   AccountServiceTest {
         assertFalse(checkingAccount.isActive());
     }
 
+    // Verifies that partial updates work — only the daily limit changes, other fields stay untouched
     @Test
     void updateAccountChangesDailyLimit() {
         AccountUpdateRequest request = new AccountUpdateRequest(null, new BigDecimal("5000"), null);

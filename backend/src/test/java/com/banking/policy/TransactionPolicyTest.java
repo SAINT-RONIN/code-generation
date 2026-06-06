@@ -26,12 +26,14 @@ class TransactionPolicyTest {
 
     // ── Require different accounts ────────────────────
 
+    // Transferring to the same account is meaningless and should be blocked
     @Test
     void requireDifferentAccountsThrowsWhenSameIban() {
         assertThrows(InvalidTransferException.class,
                 () -> policy.requireDifferentAccounts("NL01BANK0000000001", "NL01BANK0000000001"));
     }
 
+    // Different IBANs are a valid transfer pair
     @Test
     void requireDifferentAccountsPassesWhenDifferentIbans() {
         assertDoesNotThrow(
@@ -40,12 +42,14 @@ class TransactionPolicyTest {
 
     // ── Require caller owns account ────────────────────
 
+    // Customers should be able to operate on their own accounts
     @Test
     void requireCallerOwnsAccountPassesWhenCallerIsOwner() {
         Account account = buildCheckingAccount(buildUser(1L));
         assertDoesNotThrow(() -> policy.requireCallerOwnsAccount(account, 1L));
     }
 
+    // Customers must not be able to operate on someone else's account
     @Test
     void requireCallerOwnsAccountThrowsWhenCallerIsNotOwner() {
         Account account = buildCheckingAccount(buildUser(1L));
@@ -55,6 +59,7 @@ class TransactionPolicyTest {
 
     // ── Customer transfer rules ────────────────────
 
+    // Customers can freely transfer between their own accounts (checking <-> savings)
     @Test
     void customerTransferPassesBetweenOwnAccounts() {
         User owner = buildUser(1L);
@@ -63,6 +68,7 @@ class TransactionPolicyTest {
         assertDoesNotThrow(() -> policy.validateCustomerTransfer(from, to));
     }
 
+    // Customers can send money from their checking to another customer's checking
     @Test
     void customerTransferPassesCheckingToCheckingDifferentOwners() {
         Account from = buildCheckingAccount(buildUser(1L));
@@ -70,6 +76,7 @@ class TransactionPolicyTest {
         assertDoesNotThrow(() -> policy.validateCustomerTransfer(from, to));
     }
 
+    // Savings accounts cannot send to external customers — savings is for personal use only
     @Test
     void customerTransferThrowsWhenSavingsToExternalAccount() {
         Account from = buildSavingsAccount(buildUser(1L));
@@ -78,6 +85,7 @@ class TransactionPolicyTest {
                 () -> policy.validateCustomerTransfer(from, to));
     }
 
+    // External transfers must target a checking account, not savings
     @Test
     void customerTransferThrowsWhenExternalToSavings() {
         Account from = buildCheckingAccount(buildUser(1L));
@@ -88,6 +96,7 @@ class TransactionPolicyTest {
 
     // ── Employee transfer rules ────────────────────
 
+    // Employees can transfer between checking accounts of different customers
     @Test
     void employeeTransferPassesBetweenCheckingDifferentOwners() {
         Account from = buildCheckingAccount(buildUser(1L));
@@ -95,6 +104,7 @@ class TransactionPolicyTest {
         assertDoesNotThrow(() -> policy.validateEmployeeTransfer(from, to));
     }
 
+    // Employees must not touch savings accounts — only checking-to-checking is allowed
     @Test
     void employeeTransferThrowsWhenFromAccountIsSavings() {
         Account from = buildSavingsAccount(buildUser(1L));
@@ -103,6 +113,7 @@ class TransactionPolicyTest {
                 () -> policy.validateEmployeeTransfer(from, to));
     }
 
+    // Same rule: destination must also be a checking account
     @Test
     void employeeTransferThrowsWhenToAccountIsSavings() {
         Account from = buildCheckingAccount(buildUser(1L));
@@ -111,6 +122,7 @@ class TransactionPolicyTest {
                 () -> policy.validateEmployeeTransfer(from, to));
     }
 
+    // Employee transfers must be between different customers — not within the same customer
     @Test
     void employeeTransferThrowsWhenSameOwner() {
         User owner = buildUser(1L);
@@ -122,12 +134,14 @@ class TransactionPolicyTest {
 
     // ── Absolute limit ────────────────────
 
+    // If the balance after deduction stays above the absolute limit, the transfer is allowed
     @Test
     void enforceAbsoluteLimitPassesWhenBalanceRemainsAboveLimit() {
         Account account = buildAccountWithLimits("1000", "0", "2000");
         assertDoesNotThrow(() -> policy.enforceAbsoluteLimit(account, new BigDecimal("500")));
     }
 
+    // If the balance after deduction would drop below the absolute limit, the transfer must be blocked
     @Test
     void enforceAbsoluteLimitThrowsWhenBalanceDropsBelowLimit() {
         Account account = buildAccountWithLimits("100", "0", "2000");
@@ -135,6 +149,7 @@ class TransactionPolicyTest {
                 () -> policy.enforceAbsoluteLimit(account, new BigDecimal("200")));
     }
 
+    // A negative absolute limit allows overdraft — the deduction should pass as long as the floor isn't breached
     @Test
     void enforceAbsoluteLimitPassesWithOverdraftAllowed() {
         Account account = buildAccountWithLimits("100", "-500", "2000");
@@ -143,6 +158,7 @@ class TransactionPolicyTest {
 
     // ── Daily limit ────────────────────
 
+    // If today's spending plus the new amount stays within the daily limit, the transfer is allowed
     @Test
     void enforceDailyLimitPassesWhenWithinLimit() {
         Account account = buildAccountWithLimits("5000", "0", "2000");
@@ -151,6 +167,7 @@ class TransactionPolicyTest {
         assertDoesNotThrow(() -> policy.enforceDailyLimit(account, amount, todaySpent));
     }
 
+    // If today's spending plus the new amount exceeds the daily limit, the transfer must be blocked
     @Test
     void enforceDailyLimitThrowsWhenExceedsLimit() {
         Account account = buildAccountWithLimits("5000", "0", "2000");
