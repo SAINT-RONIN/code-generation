@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,6 +21,13 @@ import java.util.List;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
+
+    /**
+     * Bump this version whenever seed data changes.
+     * On startup the seeder checks for a marker transaction with this description;
+     * if missing it wipes all transactions and re-seeds the full history.
+     */
+    private static final String SEED_VERSION = "SEED_V4";
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
@@ -83,8 +91,10 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     @Override
+    @Transactional
     public void run(String... args) {
-        seedIfMissing(employeeEmail, () -> seedEmployee());
+        // 1. Seed users (idempotent — only creates when missing)
+        seedIfMissing(employeeEmail, this::seedEmployee);
         seedIfMissing(customerEmail, () -> seedActiveCustomer("Sanne", "de Vries", customerEmail, customerPassword, "192384756", "0612345678"));
         seedIfMissing(customer2Email, () -> seedActiveCustomer("Bram", "Janssen", customer2Email, customer2Password, "184756321", "0623456789"));
         seedIfMissing(customer3Email, () -> seedActiveCustomer("Eva", "van den Berg", customer3Email, customer3Password, "203847562", "0634567890"));
@@ -93,9 +103,16 @@ public class DataInitializer implements CommandLineRunner {
         seedIfMissing(pending3Email, () -> seedPendingCustomer("Thijs", "Smit", pending3Email, pending3Password, "183746521", "0667890123"));
         seedIfMissing(pending4Email, () -> seedPendingCustomer("Fenna", "Mulder", pending4Email, pending4Password, "172938465", "0678901234"));
 
-        // Seed transactions only when all 3 active customers have accounts
-        seedTransactionsIfNeeded();
+        // 2. Ensure each active customer has accounts (handles case where user exists but accounts don't)
+        ensureAccountsExist(customerEmail);
+        ensureAccountsExist(customer2Email);
+        ensureAccountsExist(customer3Email);
+
+        // 3. Seed transactions — version-gated: wipes and re-creates when SEED_VERSION changes
+        seedTransactionsIfVersionChanged();
     }
+
+    // ---- helpers ----
 
     private void seedIfMissing(String email, Runnable seeder) {
         if (!userRepository.existsByEmail(email)) seeder.run();
@@ -121,8 +138,8 @@ public class DataInitializer implements CommandLineRunner {
         customer.setPin(passwordEncoder.encode("1234"));
         customer = userRepository.save(customer);
         accountRepository.saveAll(List.of(
-                new Account(accountRepository.generateUniqueIban(), AccountType.CHECKING, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer),
-                new Account(accountRepository.generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("500.00"), customer)
+                new Account(accountRepository.generateUniqueIban(), AccountType.CHECKING, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("2000.00"), customer),
+                new Account(accountRepository.generateUniqueIban(), AccountType.SAVINGS, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("500.00"), customer)
         ));
     }
 
@@ -133,136 +150,265 @@ public class DataInitializer implements CommandLineRunner {
         userRepository.save(customer);
     }
 
-    private void seedTransactionsIfNeeded() {
-        if (transactionRepository.count() > 0) return;
-
-        List<String> c1Ibans = accountRepository.findOwnedIbansByUserId(userRepository.findByEmail(customerEmail).orElseThrow().getId());
-        List<String> c2Ibans = accountRepository.findOwnedIbansByUserId(userRepository.findByEmail(customer2Email).orElseThrow().getId());
-        List<String> c3Ibans = accountRepository.findOwnedIbansByUserId(userRepository.findByEmail(customer3Email).orElseThrow().getId());
-
-        if (c1Ibans.size() < 2 || c2Ibans.size() < 2 || c3Ibans.size() < 2) return;
-
-        List<Account> c1Accounts = c1Ibans.stream().map(iban -> accountRepository.findById(iban).orElseThrow()).toList();
-        List<Account> c2Accounts = c2Ibans.stream().map(iban -> accountRepository.findById(iban).orElseThrow()).toList();
-        List<Account> c3Accounts = c3Ibans.stream().map(iban -> accountRepository.findById(iban).orElseThrow()).toList();
-
-        seedTransactionHistory(c1Accounts, c2Accounts, c3Accounts);
+    private void ensureAccountsExist(String email) {
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null || user.getStatus() != UserStatus.ACTIVE) return;
+        List<String> ibans = accountRepository.findOwnedIbansByUserId(user.getId());
+        if (ibans.isEmpty()) {
+            accountRepository.saveAll(List.of(
+                    new Account(accountRepository.generateUniqueIban(), AccountType.CHECKING, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("2000.00"), user),
+                    new Account(accountRepository.generateUniqueIban(), AccountType.SAVINGS, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("500.00"), user)
+            ));
+        }
     }
 
-    private void seedTransactionHistory(List<Account> c1Accounts, List<Account> c2Accounts, List<Account> c3Accounts) {
-        Account c1Checking = c1Accounts.get(0);
-        Account c1Savings  = c1Accounts.get(1);
-        Account c2Checking = c2Accounts.get(0);
-        Account c2Savings  = c2Accounts.get(1);
-        Account c3Checking = c3Accounts.get(0);
-        Account c3Savings  = c3Accounts.get(1);
+    // ---- transaction seeding ----
 
+    private void seedTransactionsIfVersionChanged() {
+        if (transactionRepository.existsByDescription(SEED_VERSION)) return;
+
+        // Wipe stale transactions so the full history is consistent
+        transactionRepository.deleteAll();
+
+        // Look up accounts for all 3 active customers
+        List<Account> c1 = loadAccounts(customerEmail);
+        List<Account> c2 = loadAccounts(customer2Email);
+        List<Account> c3 = loadAccounts(customer3Email);
+
+        if (c1.size() < 2 || c2.size() < 2 || c3.size() < 2) return;
+
+        Account c1C = c1.get(0), c1S = c1.get(1);
+        Account c2C = c2.get(0), c2S = c2.get(1);
+        Account c3C = c3.get(0), c3S = c3.get(1);
+
+        // Reset all balances to zero before replaying history
+        resetBalance(c1C); resetBalance(c1S);
+        resetBalance(c2C); resetBalance(c2S);
+        resetBalance(c3C); resetBalance(c3S);
+
+        seedFullHistory(c1C, c1S, c2C, c2S, c3C, c3S);
+
+        // Persist updated balances
+        accountRepository.saveAll(List.of(c1C, c1S, c2C, c2S, c3C, c3S));
+
+        // Write version marker (hidden from normal queries by its zero amount)
+        transactionRepository.save(new Transaction(null, null, BigDecimal.ZERO,
+                "system", SEED_VERSION, TransactionType.DEPOSIT, LocalDateTime.now().minusDays(31)));
+    }
+
+    private List<Account> loadAccounts(String email) {
+        Long userId = userRepository.findByEmail(email).orElseThrow().getId();
+        return accountRepository.findOwnedIbansByUserId(userId).stream()
+                .map(iban -> accountRepository.findById(iban).orElseThrow())
+                .toList();
+    }
+
+    private void resetBalance(Account account) {
+        BigDecimal bal = account.getBalance();
+        if (bal.signum() > 0) account.debit(bal);
+        else if (bal.signum() < 0) account.credit(bal.negate());
+    }
+
+    // ---- shorthand helpers ----
+
+    private void deposit(Account to, String amount, String email, String desc, LocalDateTime ts) {
+        BigDecimal amt = new BigDecimal(amount);
+        transactionRepository.save(new Transaction(null, to.getIban(), amt, email, desc, TransactionType.DEPOSIT, ts));
+        to.credit(amt);
+    }
+
+    private void withdraw(Account from, String amount, String email, String desc, LocalDateTime ts) {
+        BigDecimal amt = new BigDecimal(amount);
+        transactionRepository.save(new Transaction(from.getIban(), null, amt, email, desc, TransactionType.WITHDRAWAL, ts));
+        from.debit(amt);
+    }
+
+    private void transfer(Account from, Account to, String amount, String email, String desc, LocalDateTime ts) {
+        BigDecimal amt = new BigDecimal(amount);
+        transactionRepository.save(new Transaction(from.getIban(), to.getIban(), amt, email, desc, TransactionType.TRANSFER, ts));
+        from.debit(amt);
+        to.credit(amt);
+    }
+
+    // ---- full transaction history (20+ per account, ~115 total) ----
+
+    private void seedFullHistory(Account c1C, Account c1S, Account c2C, Account c2S, Account c3C, Account c3S) {
         LocalDateTime now = LocalDateTime.now();
 
-        // --- Day 14: ATM deposits ---
-        seedTransaction(null, c1Checking.getIban(), "2000.00", customerEmail, "ATM cash deposit", TransactionType.DEPOSIT, now.minusDays(14));
-        c1Checking.credit(new BigDecimal("2000.00"));
+        // ========== Day 30: Salary deposits ==========
+        deposit(c1C, "5000.00", customerEmail,  "Salary deposit",  now.minusDays(30));
+        deposit(c2C, "4500.00", customer2Email, "Salary deposit",  now.minusDays(30));
+        deposit(c3C, "5200.00", customer3Email, "Salary deposit",  now.minusDays(30));
 
-        seedTransaction(null, c2Checking.getIban(), "1800.00", customer2Email, "ATM cash deposit", TransactionType.DEPOSIT, now.minusDays(14));
-        c2Checking.credit(new BigDecimal("1800.00"));
+        // ========== Day 29: Initial savings ==========
+        deposit(c1S, "2000.00", customerEmail,  "Initial savings transfer", now.minusDays(29));
+        deposit(c2S, "1800.00", customer2Email, "Initial savings transfer", now.minusDays(29));
+        deposit(c3S, "2200.00", customer3Email, "Initial savings transfer", now.minusDays(29));
 
-        seedTransaction(null, c3Checking.getIban(), "2500.00", customer3Email, "ATM cash deposit", TransactionType.DEPOSIT, now.minusDays(14));
-        c3Checking.credit(new BigDecimal("2500.00"));
+        // ========== Day 28: First cross-customer transfers ==========
+        transfer(c1C, c2C, "350.00", customerEmail,  "Rent share",       now.minusDays(28));
+        transfer(c2C, c3C, "175.00", customer2Email, "Concert tickets",  now.minusDays(28));
+        transfer(c3C, c1C, "200.00", customer3Email, "Birthday gift",    now.minusDays(28));
 
-        // --- Day 12: Customer 1 → Customer 2 transfer ---
-        seedTransaction(c1Checking.getIban(), c2Checking.getIban(), "350.00", customerEmail, "Rent share", TransactionType.TRANSFER, now.minusDays(12));
-        c1Checking.debit(new BigDecimal("350.00"));
-        c2Checking.credit(new BigDecimal("350.00"));
+        // ========== Day 27: Own-account transfers ==========
+        transfer(c1C, c1S, "800.00", customerEmail,  "Monthly savings",  now.minusDays(27));
+        transfer(c2C, c2S, "600.00", customer2Email, "Savings top-up",   now.minusDays(27));
+        transfer(c3C, c3S, "700.00", customer3Email, "Emergency fund",   now.minusDays(27));
 
-        // --- Day 11: Customer 3 → Customer 1 transfer ---
-        seedTransaction(c3Checking.getIban(), c1Checking.getIban(), "120.00", customer3Email, "Birthday gift", TransactionType.TRANSFER, now.minusDays(11));
-        c3Checking.debit(new BigDecimal("120.00"));
-        c1Checking.credit(new BigDecimal("120.00"));
+        // ========== Day 26: ATM + transfers ==========
+        withdraw(c1C, "100.00", customerEmail,  "ATM withdrawal",    now.minusDays(26));
+        withdraw(c2C, "80.00",  customer2Email, "ATM withdrawal",    now.minusDays(26));
+        withdraw(c3C, "120.00", customer3Email, "ATM withdrawal",    now.minusDays(26));
+        transfer(c2C, c1C, "45.50", customer2Email, "Split groceries", now.minusDays(26));
 
-        // --- Day 10: Customer 2 → Customer 3 transfer ---
-        seedTransaction(c2Checking.getIban(), c3Checking.getIban(), "85.00", customer2Email, "Concert tickets", TransactionType.TRANSFER, now.minusDays(10));
-        c2Checking.debit(new BigDecimal("85.00"));
-        c3Checking.credit(new BigDecimal("85.00"));
+        // ========== Day 25: Mixed activity ==========
+        transfer(c1C, c3C, "200.00", customerEmail,  "Dinner reimbursement", now.minusDays(25));
+        transfer(c3C, c2C, "85.00",  customer3Email, "Utility share",        now.minusDays(25));
+        deposit(c1C, "400.00", customerEmail, "Freelance payment", now.minusDays(25));
 
-        // --- Day 9: Own-account transfers ---
-        seedTransaction(c1Checking.getIban(), c1Savings.getIban(), "500.00", customerEmail, "Monthly savings", TransactionType.TRANSFER, now.minusDays(9));
-        c1Checking.debit(new BigDecimal("500.00"));
-        c1Savings.credit(new BigDecimal("500.00"));
+        // ========== Day 24: Transfers + salary ==========
+        transfer(c1C, c2C, "60.00",  customerEmail,  "Lunch money",    now.minusDays(24));
+        transfer(c3C, c1C, "90.00",  customer3Email, "Train tickets",  now.minusDays(24));
+        deposit(c2C, "1200.00", customer2Email, "Salary deposit",      now.minusDays(24));
 
-        seedTransaction(c3Checking.getIban(), c3Savings.getIban(), "600.00", customer3Email, "Rainy day fund", TransactionType.TRANSFER, now.minusDays(9));
-        c3Checking.debit(new BigDecimal("600.00"));
-        c3Savings.credit(new BigDecimal("600.00"));
+        // ========== Day 23: Savings ↔ checking ==========
+        transfer(c2C, c3C, "130.00", customer2Email, "Utility bills split",    now.minusDays(23));
+        transfer(c1S, c1C, "150.00", customerEmail,  "Move back to checking",  now.minusDays(23));
+        transfer(c2S, c2C, "200.00", customer2Email, "Spending money",         now.minusDays(23));
 
-        // --- Day 8: Customer 1 ATM withdrawal ---
-        seedTransaction(c1Checking.getIban(), null, "80.00", customerEmail, "ATM withdrawal", TransactionType.WITHDRAWAL, now.minusDays(8));
-        c1Checking.debit(new BigDecimal("80.00"));
+        // ========== Day 22: Cross-customer + deposit ==========
+        transfer(c3C, c2C, "55.00",  customer3Email, "Coffee money",       now.minusDays(22));
+        deposit(c1C, "400.00", customerEmail, "Client payment",            now.minusDays(22));
+        transfer(c2C, c1C, "75.00",  customer2Email, "Book reimbursement", now.minusDays(22));
 
-        // --- Day 7: Customer 2 → Customer 1 ---
-        seedTransaction(c2Checking.getIban(), c1Checking.getIban(), "45.50", customer2Email, "Split groceries", TransactionType.TRANSFER, now.minusDays(7));
-        c2Checking.debit(new BigDecimal("45.50"));
-        c1Checking.credit(new BigDecimal("45.50"));
+        // ========== Day 21: Larger movements ==========
+        transfer(c1C, c3C, "300.00", customerEmail,  "Gift",           now.minusDays(21));
+        transfer(c3C, c3S, "400.00", customer3Email, "Save extra",     now.minusDays(21));
+        deposit(c3C, "800.00", customer3Email, "Salary deposit",       now.minusDays(21));
 
-        // --- Day 6: Customer 3 deposit + Customer 1 → Customer 3 ---
-        seedTransaction(null, c3Checking.getIban(), "300.00", customer3Email, "ATM cash deposit", TransactionType.DEPOSIT, now.minusDays(6));
-        c3Checking.credit(new BigDecimal("300.00"));
+        // ========== Day 20: Savings round ==========
+        transfer(c1C, c1S, "500.00", customerEmail,  "Extra savings",     now.minusDays(20));
+        transfer(c2C, c2S, "350.00", customer2Email, "Savings goal",      now.minusDays(20));
+        transfer(c3S, c3C, "150.00", customer3Email, "Need for bills",    now.minusDays(20));
 
-        seedTransaction(c1Checking.getIban(), c3Checking.getIban(), "200.00", customerEmail, "Dinner reimbursement", TransactionType.TRANSFER, now.minusDays(6));
-        c1Checking.debit(new BigDecimal("200.00"));
-        c3Checking.credit(new BigDecimal("200.00"));
+        // ========== Day 19: Withdrawals + transfers ==========
+        withdraw(c1C, "60.00",  customerEmail,  "ATM cash",               now.minusDays(19));
+        withdraw(c2C, "50.00",  customer2Email, "ATM cash",               now.minusDays(19));
+        transfer(c1C, c2C, "95.00",  customerEmail,  "Gym membership split", now.minusDays(19));
+        transfer(c3C, c1C, "65.00",  customer3Email, "Parking reimbursement", now.minusDays(19));
 
-        // --- Day 5: Customer 2 own-account + Customer 3 → Customer 2 ---
-        seedTransaction(c2Checking.getIban(), c2Savings.getIban(), "400.00", customer2Email, "Savings top-up", TransactionType.TRANSFER, now.minusDays(5));
-        c2Checking.debit(new BigDecimal("400.00"));
-        c2Savings.credit(new BigDecimal("400.00"));
+        // ========== Day 18: Savings cross-transfers ==========
+        transfer(c2C, c3C, "110.00", customer2Email, "Electronics share",     now.minusDays(18));
+        deposit(c2S, "500.00", customer2Email, "Bonus deposit",               now.minusDays(18));
+        transfer(c1S, c2S, "200.00", customerEmail,  "Savings transfer",      now.minusDays(18));
+        deposit(c1S, "300.00", customerEmail, "Interest deposit",             now.minusDays(18));
 
-        seedTransaction(c3Checking.getIban(), c2Checking.getIban(), "175.00", customer3Email, "Furniture share", TransactionType.TRANSFER, now.minusDays(5));
-        c3Checking.debit(new BigDecimal("175.00"));
-        c2Checking.credit(new BigDecimal("175.00"));
+        // ========== Day 17: More cross-customer ==========
+        transfer(c3C, c1C, "180.00", customer3Email, "Furniture split",       now.minusDays(17));
+        transfer(c1C, c2C, "140.00", customerEmail,  "Insurance share",       now.minusDays(17));
+        deposit(c3S, "400.00", customer3Email, "Savings deposit",             now.minusDays(17));
+        transfer(c2S, c3S, "150.00", customer2Email, "Savings gift",          now.minusDays(17));
 
-        // --- Day 4: Customer 2 withdrawal + Customer 1 → Customer 2 ---
-        seedTransaction(c2Checking.getIban(), null, "100.00", customer2Email, "ATM withdrawal", TransactionType.WITHDRAWAL, now.minusDays(4));
-        c2Checking.debit(new BigDecimal("100.00"));
+        // ========== Day 16: Withdrawals + rent ==========
+        withdraw(c3C, "90.00",  customer3Email, "ATM withdrawal",             now.minusDays(16));
+        transfer(c2C, c1C, "250.00", customer2Email, "Rent refund",           now.minusDays(16));
+        transfer(c3C, c2C, "95.00",  customer3Email, "Streaming subscription", now.minusDays(16));
+        deposit(c1S, "250.00", customerEmail, "Monthly auto-save",            now.minusDays(16));
 
-        seedTransaction(c1Checking.getIban(), c2Checking.getIban(), "60.00", customerEmail, "Lunch money", TransactionType.TRANSFER, now.minusDays(4));
-        c1Checking.debit(new BigDecimal("60.00"));
-        c2Checking.credit(new BigDecimal("60.00"));
+        // ========== Day 15: Savings movements ==========
+        transfer(c1C, c3C, "75.00",  customerEmail,  "Movie tickets",         now.minusDays(15));
+        transfer(c3S, c1S, "100.00", customer3Email, "Savings return",        now.minusDays(15));
+        transfer(c2S, c2C, "175.00", customer2Email, "Move to checking",      now.minusDays(15));
+        deposit(c2S, "300.00", customer2Email, "Savings auto-deposit",        now.minusDays(15));
 
-        // --- Day 3: Customer 3 → Customer 1 + Customer 3 withdrawal ---
-        seedTransaction(c3Checking.getIban(), c1Checking.getIban(), "90.00", customer3Email, "Train tickets", TransactionType.TRANSFER, now.minusDays(3));
-        c3Checking.debit(new BigDecimal("90.00"));
-        c1Checking.credit(new BigDecimal("90.00"));
+        // ========== Day 14: Emergency + year-end ==========
+        transfer(c1S, c1C, "200.00", customerEmail,  "Emergency expense",     now.minusDays(14));
+        deposit(c3S, "350.00", customer3Email, "Gift savings",                now.minusDays(14));
+        transfer(c2C, c2S, "450.00", customer2Email, "Year-end savings",      now.minusDays(14));
+        transfer(c3C, c3S, "300.00", customer3Email, "Monthly savings",       now.minusDays(14));
 
-        seedTransaction(c3Checking.getIban(), null, "50.00", customer3Email, "ATM cash withdrawal", TransactionType.WITHDRAWAL, now.minusDays(3));
-        c3Checking.debit(new BigDecimal("50.00"));
+        // ========== Day 13: Cross-customer + savings ==========
+        transfer(c1C, c2C, "85.00",  customerEmail,  "Lunch split",           now.minusDays(13));
+        transfer(c3C, c1C, "120.00", customer3Email, "Travel expenses",       now.minusDays(13));
+        transfer(c2S, c3S, "125.00", customer2Email, "Savings exchange",      now.minusDays(13));
+        deposit(c1S, "200.00", customerEmail, "Dividend",                     now.minusDays(13));
 
-        // --- Day 2: Customer 2 → Customer 3 + Customer 1 own-account ---
-        seedTransaction(c2Checking.getIban(), c3Checking.getIban(), "130.00", customer2Email, "Utility bills split", TransactionType.TRANSFER, now.minusDays(2));
-        c2Checking.debit(new BigDecimal("130.00"));
-        c3Checking.credit(new BigDecimal("130.00"));
+        // ========== Day 12: More transfers ==========
+        transfer(c2C, c3C, "65.00",  customer2Email, "Snack money",           now.minusDays(12));
+        transfer(c1C, c3C, "180.00", customerEmail,  "Computer repair share", now.minusDays(12));
+        transfer(c3S, c2S, "90.00",  customer3Email, "Savings back",          now.minusDays(12));
+        deposit(c2S, "150.00", customer2Email, "Interest",                    now.minusDays(12));
 
-        seedTransaction(c1Savings.getIban(), c1Checking.getIban(), "150.00", customerEmail, "Move back to checking", TransactionType.TRANSFER, now.minusDays(2));
-        c1Savings.debit(new BigDecimal("150.00"));
-        c1Checking.credit(new BigDecimal("150.00"));
+        // ========== Day 11: Appliance + savings ==========
+        withdraw(c1C, "75.00",  customerEmail,  "Cash withdrawal",            now.minusDays(11));
+        transfer(c3C, c2C, "200.00", customer3Email, "Appliance split",       now.minusDays(11));
+        transfer(c1S, c3S, "175.00", customerEmail,  "Savings transfer",      now.minusDays(11));
+        transfer(c2S, c1S, "160.00", customer2Email, "Savings return",        now.minusDays(11));
 
-        // --- Day 1: Customer 3 → Customer 2 + Customer 1 deposit ---
-        seedTransaction(c3Checking.getIban(), c2Checking.getIban(), "55.00", customer3Email, "Coffee money", TransactionType.TRANSFER, now.minusDays(1));
-        c3Checking.debit(new BigDecimal("55.00"));
-        c2Checking.credit(new BigDecimal("55.00"));
+        // ========== Day 10: Gas + savings ==========
+        transfer(c2C, c1C, "110.00", customer2Email, "Gas money",             now.minusDays(10));
+        deposit(c3C, "500.00", customer3Email, "Freelance payment",           now.minusDays(10));
+        transfer(c1S, c2S, "100.00", customerEmail,  "Savings tip",           now.minusDays(10));
+        transfer(c3S, c1S, "200.00", customer3Email, "Savings refund",        now.minusDays(10));
 
-        seedTransaction(null, c1Checking.getIban(), "400.00", customerEmail, "ATM cash deposit", TransactionType.DEPOSIT, now.minusDays(1));
-        c1Checking.credit(new BigDecimal("400.00"));
+        // ========== Day 9: Weekly savings ==========
+        transfer(c1C, c1S, "350.00", customerEmail,  "Weekly savings",        now.minusDays(9));
+        transfer(c3C, c1C, "95.00",  customer3Email, "Taxi split",            now.minusDays(9));
+        transfer(c2C, c3C, "85.00",  customer2Email, "Coffee run",            now.minusDays(9));
+        transfer(c2S, c2C, "250.00", customer2Email, "Need for rent",         now.minusDays(9));
 
-        // --- Today: Customer 2 → Customer 1 ---
-        seedTransaction(c2Checking.getIban(), c1Checking.getIban(), "75.00", customer2Email, "Book reimbursement", TransactionType.TRANSFER, now.minusHours(3));
-        c2Checking.debit(new BigDecimal("75.00"));
-        c1Checking.credit(new BigDecimal("75.00"));
+        // ========== Day 8: Mixed day ==========
+        deposit(c1S, "175.00", customerEmail, "Cashback reward",              now.minusDays(8));
+        withdraw(c2C, "65.00",  customer2Email, "ATM cash",                   now.minusDays(8));
+        transfer(c3S, c3C, "180.00", customer3Email, "Bill payment fund",     now.minusDays(8));
+        transfer(c1C, c2C, "55.00",  customerEmail,  "App subscription",      now.minusDays(8));
 
-        accountRepository.saveAll(List.of(c1Checking, c1Savings, c2Checking, c2Savings, c3Checking, c3Savings));
+        // ========== Day 7: Loan + savings ==========
+        transfer(c3C, c2C, "45.00",  customer3Email, "Snack split",           now.minusDays(7));
+        transfer(c2C, c1C, "160.00", customer2Email, "Loan repayment",        now.minusDays(7));
+        deposit(c3S, "200.00", customer3Email, "Savings boost",               now.minusDays(7));
+        transfer(c1S, c1C, "100.00", customerEmail,  "Petrol money",          now.minusDays(7));
+
+        // ========== Day 6: Savings swaps ==========
+        deposit(c2S, "225.00", customer2Email, "Savings top-up",              now.minusDays(6));
+        transfer(c1C, c3C, "140.00", customerEmail,  "Birthday dinner",       now.minusDays(6));
+        transfer(c3S, c2S, "135.00", customer3Email, "Savings swap",          now.minusDays(6));
+        transfer(c2C, c2S, "200.00", customer2Email, "Quick save",            now.minusDays(6));
+
+        // ========== Day 5: Movies + savings ==========
+        transfer(c2C, c3C, "70.00",  customer2Email, "Movie night",           now.minusDays(5));
+        transfer(c3C, c3S, "250.00", customer3Email, "Big savings",           now.minusDays(5));
+        transfer(c1S, c2S, "110.00", customerEmail,  "Help savings",          now.minusDays(5));
+        deposit(c1C, "600.00", customerEmail, "Salary deposit",               now.minusDays(5));
+
+        // ========== Day 4: Vacation + gym ==========
+        transfer(c1C, c2C, "180.00", customerEmail,  "Vacation fund",         now.minusDays(4));
+        transfer(c3C, c1C, "110.00", customer3Email, "Gym split",             now.minusDays(4));
+        withdraw(c3C, "40.00",  customer3Email, "ATM withdrawal",             now.minusDays(4));
+        transfer(c2S, c3S, "100.00", customer2Email, "Savings gift",          now.minusDays(4));
+        transfer(c1S, c1C, "75.00",  customerEmail,  "Misc expense",          now.minusDays(4));
+
+        // ========== Day 3: Freelance + books ==========
+        deposit(c3C, "350.00", customer3Email, "Freelance payment",           now.minusDays(3));
+        transfer(c2C, c1C, "90.00",  customer2Email, "Study books",           now.minusDays(3));
+        transfer(c3S, c1S, "85.00",  customer3Email, "Savings return",        now.minusDays(3));
+        deposit(c2C, "450.00", customer2Email, "Salary deposit",              now.minusDays(3));
+
+        // ========== Day 2: Groceries + saves ==========
+        transfer(c1C, c3C, "65.00",  customerEmail,  "Takeout",               now.minusDays(2));
+        transfer(c3C, c2C, "120.00", customer3Email, "Groceries split",       now.minusDays(2));
+        transfer(c2C, c2S, "300.00", customer2Email, "Savings push",          now.minusDays(2));
+        deposit(c3S, "150.00", customer3Email, "Auto-save",                   now.minusDays(2));
+        withdraw(c1C, "50.00",  customerEmail,  "ATM withdrawal",             now.minusDays(2));
+
+        // ========== Day 1: End of month ==========
+        transfer(c3C, c1C, "75.00",  customer3Email, "Parking split",         now.minusDays(1));
+        transfer(c2C, c3C, "95.00",  customer2Email, "Dinner out",            now.minusDays(1));
+        transfer(c1C, c1S, "200.00", customerEmail,  "End of month savings",  now.minusDays(1));
+
+        // ========== Today ==========
+        transfer(c1C, c2C, "40.00",  customerEmail,  "Coffee",                now.minusHours(5));
+        deposit(c3C, "250.00", customer3Email, "Online refund",               now.minusHours(3));
+        transfer(c2C, c1C, "55.00",  customer2Email, "Lunch split",           now.minusHours(1));
     }
-
-    private void seedTransaction(String fromIban, String toIban, String amount,
-                                 String performedBy, String description, TransactionType type, LocalDateTime timestamp) {
-        transactionRepository.save(new Transaction(fromIban, toIban, new BigDecimal(amount), performedBy, description, type, timestamp));
-    }
-
 }

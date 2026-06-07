@@ -31,6 +31,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long>,
         return save(new Transaction(fromIban, toIban, amount, performedBy, description, type));
     }
 
+    boolean existsByDescription(String description);
+
     default Page<Transaction> findByFilter(TransactionFilter filter, Pageable pageable) {
         return findAll(TransactionSpecification.matchesFilter(filter), pageable);
     }
