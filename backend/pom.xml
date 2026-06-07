@@ -80,6 +80,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Spring Dotenv (.env file loading) -->
+        <dependency>
+            <groupId>me.paulschwarz</groupId>
+            <artifactId>spring-dotenv</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
         <!-- Swagger / OpenAPI (SpringDoc) -->
         <dependency>
             <groupId>org.springdoc</groupId>
