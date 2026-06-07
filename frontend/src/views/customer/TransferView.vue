@@ -17,8 +17,6 @@ const route = useRoute()
 const mode = computed(() => route.query.mode === 'own' ? 'own' : 'other')
 
 const accounts = ref([])
-const loadingAccounts = ref(true)
-
 const step = ref(1)
 const fromIban = ref('')
 const toIban = ref('')
@@ -38,8 +36,6 @@ onMounted(async () => {
     fromIban.value = data[0]?.iban ?? ''
   } catch {
     error.value = 'Could not load your accounts.'
-  } finally {
-    loadingAccounts.value = false
   }
 })
 

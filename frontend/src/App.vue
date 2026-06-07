@@ -1,10 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import VToast from './components/ui/VToast.vue'
 
-const palette = ref('vault')
 onMounted(() => {
-  document.documentElement.setAttribute('data-palette', palette.value)
+  document.documentElement.setAttribute('data-palette', 'vault')
 })
 </script>
 
