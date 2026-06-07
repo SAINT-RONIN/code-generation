@@ -40,10 +40,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("excludeUserId") Long excludeUserId);
 
     @Query("SELECT u FROM User u WHERE u.role = 'CUSTOMER' " +
-           "AND (:status IS NULL OR u.status = :status) " +
-           "AND (:search IS NULL OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "AND (CAST(:status AS string) IS NULL OR u.status = :status) " +
+           "AND (CAST(:search AS string) IS NULL OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "OR LOWER(u.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
     Page<User> findCustomers(@Param("status") UserStatus status, @Param("search") String search, Pageable pageable);
 
     default void ensureEmailAvailable(String email) {

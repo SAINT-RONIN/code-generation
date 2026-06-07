@@ -17,16 +17,16 @@ const loading = ref(true)
 
 onMounted(async () => {
   try {
-    const [pendingRes, accountsRes, txRes] = await Promise.all([
+    const [pendingRes, accountsRes, txRes] = await Promise.allSettled([
       getCustomers({ status: 'PENDING', size: 10 }),
       getAllAccounts({ size: 1 }),
       getTransactions({ size: 5, sort: 'timestamp,desc' }),
     ])
-    pending.value = pendingRes.data.content ?? []
-    totalAccounts.value = accountsRes.data.totalElements ?? 0
-    recentTx.value = txRes.data.content ?? []
+    if (pendingRes.status === 'fulfilled')  pending.value = pendingRes.value.data.content ?? []
+    if (accountsRes.status === 'fulfilled') totalAccounts.value = accountsRes.value.data.totalElements ?? 0
+    if (txRes.status === 'fulfilled')       recentTx.value = txRes.value.data.content ?? []
   } catch {
-    // backend might not expose all endpoints; show empty gracefully
+    // unexpected error; show empty gracefully
   } finally {
     loading.value = false
   }
