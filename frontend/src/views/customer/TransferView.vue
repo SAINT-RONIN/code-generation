@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { transfer } from '../../services/transactions'
 import { getMyAccounts, searchByName } from '../../services/accounts'
@@ -44,7 +44,13 @@ onMounted(async () => {
 })
 
 const fromAccount = computed(() => accounts.value.find(a => a.iban === fromIban.value))
-const otherAccount = computed(() => accounts.value.find(a => a.iban !== fromIban.value))
+const destinationAccounts = computed(() => accounts.value.filter(a => a.iban !== fromIban.value))
+const toAccount = computed(() => accounts.value.find(a => a.iban === toIban.value))
+
+// When the source account changes, reset the destination if it conflicts
+watch(fromIban, () => {
+  if (toIban.value === fromIban.value) toIban.value = ''
+})
 
 let searchTimer = null
 async function onSearchInput() {
@@ -80,8 +86,8 @@ function goReview() {
   error.value = ''
   if (!amount.value || parseFloat(amount.value) <= 0) { error.value = 'Enter a valid amount.'; return }
   if (mode.value === 'own') {
-    if (!otherAccount.value) { error.value = 'No second account found.'; return }
-    toIban.value = otherAccount.value.iban
+    if (!destinationAccounts.value.length) { error.value = 'You need at least two accounts to move money.'; return }
+    if (!toIban.value) { error.value = 'Select a destination account.'; return }
   } else if (!toIban.value) {
     error.value = 'Select a recipient.'
     return
@@ -220,12 +226,31 @@ async function reset() {
         <!-- Own account destination -->
         <template v-else>
           <VField label="To account">
-            <div class="h-10 px-3 flex items-center rounded-lg text-sm border"
+            <div v-if="destinationAccounts.length" class="space-y-2 mt-1">
+              <button
+                v-for="account in destinationAccounts"
+                :key="account.iban"
+                type="button"
+                class="w-full flex items-center gap-3 p-4 rounded-xl border text-left transition-colors"
+                :style="toIban === account.iban
+                  ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)' }
+                  : { borderColor: 'var(--line-2)', background: 'var(--surface)' }"
+                @click="toIban = account.iban"
+              >
+                <div class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center"
+                  :style="{ background: 'var(--surface-2)' }">
+                  <div class="w-3 h-3 rounded-full" :style="{ background: 'var(--accent)' }" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium" :style="{ color: 'var(--ink)' }">{{ account.accountType }}</p>
+                  <p class="text-xs font-mono truncate" :style="{ color: 'var(--ink-3)' }">{{ account.iban }}</p>
+                </div>
+                <p class="text-sm font-medium tabnum flex-shrink-0" :style="{ color: 'var(--ink)' }">{{ eur(account.balance) }}</p>
+              </button>
+            </div>
+            <div v-else class="h-10 px-3 flex items-center rounded-lg text-sm border"
               :style="{ background: 'var(--surface-2)', borderColor: 'var(--line-2)', color: 'var(--ink-2)' }">
-              <template v-if="otherAccount">
-                {{ otherAccount.accountType }} · {{ otherAccount.iban }}
-              </template>
-              <template v-else>No other account available</template>
+              No other account available
             </div>
           </VField>
         </template>
@@ -276,7 +301,7 @@ async function reset() {
               <span class="text-sm" :style="{ color: 'var(--ink-3)' }">To</span>
               <div class="text-right">
                 <p class="text-sm font-medium" :style="{ color: 'var(--ink)' }">
-                  {{ selectedRecipient ? `${selectedRecipient.firstName} ${selectedRecipient.lastName}` : (otherAccount?.accountType ?? 'External') }}
+                  {{ selectedRecipient ? `${selectedRecipient.firstName} ${selectedRecipient.lastName}` : (toAccount?.accountType ?? 'External') }}
                 </p>
                 <p class="text-xs font-mono" :style="{ color: 'var(--ink-3)' }">{{ toIban }}</p>
               </div>
