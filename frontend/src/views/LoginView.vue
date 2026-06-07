@@ -32,16 +32,18 @@ async function handleLogin() {
   }
 }
 
+const demoAccounts = {
+  customer:  { email: 'customer@test.com',  password: 'customer123' },
+  customer2: { email: 'customer2@test.com', password: 'customer123' },
+  customer3: { email: 'customer3@test.com', password: 'customer123' },
+  employee:  { email: 'employee@bank.com',  password: 'employee123' },
+}
+
 function fillDemo(role) {
-  if (role === 'customer') {
-    email.value = 'customer@test.com'
-    password.value = 'customer123'
-  } else if (role === 'customer2') {
-    email.value = 'customer2@test.com'
-    password.value = 'customer123'
-  } else {
-    email.value = 'employee@bank.com'
-    password.value = 'employee123'
+  const account = demoAccounts[role]
+  if (account) {
+    email.value = account.email
+    password.value = account.password
   }
 }
 </script>
@@ -124,25 +126,15 @@ function fillDemo(role) {
         <!-- Demo shortcuts -->
         <div class="mt-6 pt-6 border-t" :style="{ borderColor: 'var(--line)' }">
           <p class="text-xs mb-2" :style="{ color: 'var(--ink-3)' }">Demo shortcuts:</p>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button
+              v-for="(account, key) in demoAccounts"
+              :key="key"
               type="button"
               class="text-xs px-3 py-1.5 rounded-lg font-medium lift"
               :style="{ background: 'var(--surface-2)', color: 'var(--ink-2)' }"
-              @click="fillDemo('customer')"
-            >Customer</button>
-            <button
-              type="button"
-              class="text-xs px-3 py-1.5 rounded-lg font-medium lift"
-              :style="{ background: 'var(--surface-2)', color: 'var(--ink-2)' }"
-              @click="fillDemo('customer2')"
-            >Customer 2</button>
-            <button
-              type="button"
-              class="text-xs px-3 py-1.5 rounded-lg font-medium lift"
-              :style="{ background: 'var(--surface-2)', color: 'var(--ink-2)' }"
-              @click="fillDemo('employee')"
-            >Employee</button>
+              @click="fillDemo(key)"
+            >{{ key.charAt(0).toUpperCase() + key.slice(1) }}</button>
           </div>
         </div>
 
