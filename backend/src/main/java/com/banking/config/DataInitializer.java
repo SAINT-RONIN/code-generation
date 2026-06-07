@@ -84,14 +84,21 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.existsByEmail(employeeEmail)) return;
+        seedIfMissing(employeeEmail, () -> seedEmployee());
+        seedIfMissing(customerEmail, () -> seedActiveCustomer("Sanne", "de Vries", customerEmail, customerPassword, "192384756", "0612345678"));
+        seedIfMissing(customer2Email, () -> seedActiveCustomer("Bram", "Janssen", customer2Email, customer2Password, "184756321", "0623456789"));
+        seedIfMissing(customer3Email, () -> seedActiveCustomer("Eva", "van den Berg", customer3Email, customer3Password, "203847562", "0634567890"));
+        seedIfMissing(pending1Email, () -> seedPendingCustomer("Daan", "Bakker", pending1Email, pending1Password, "194827365", "0645678901"));
+        seedIfMissing(pending2Email, () -> seedPendingCustomer("Lotte", "Visser", pending2Email, pending2Password, "210394857", "0656789012"));
+        seedIfMissing(pending3Email, () -> seedPendingCustomer("Thijs", "Smit", pending3Email, pending3Password, "183746521", "0667890123"));
+        seedIfMissing(pending4Email, () -> seedPendingCustomer("Fenna", "Mulder", pending4Email, pending4Password, "172938465", "0678901234"));
 
-        seedEmployee();
-        List<Account> customer1Accounts = seedActiveCustomer("Sanne", "de Vries", customerEmail, customerPassword, "192384756", "0612345678");
-        List<Account> customer2Accounts = seedActiveCustomer("Bram", "Janssen", customer2Email, customer2Password, "184756321", "0623456789");
-        List<Account> customer3Accounts = seedActiveCustomer("Eva", "van den Berg", customer3Email, customer3Password, "203847562", "0634567890");
-        seedPendingCustomers();
-        seedTransactionHistory(customer1Accounts, customer2Accounts, customer3Accounts);
+        // Seed transactions only when all 3 active customers have accounts
+        seedTransactionsIfNeeded();
+    }
+
+    private void seedIfMissing(String email, Runnable seeder) {
+        if (!userRepository.existsByEmail(email)) seeder.run();
     }
 
     private void seedEmployee() {
@@ -107,23 +114,16 @@ public class DataInitializer implements CommandLineRunner {
         userRepository.save(employee);
     }
 
-    private List<Account> seedActiveCustomer(String firstName, String lastName, String email, String password,
-                                             String bsn, String phone) {
+    private void seedActiveCustomer(String firstName, String lastName, String email, String password,
+                                    String bsn, String phone) {
         User customer = new User(firstName, lastName, email, passwordEncoder.encode(password), bsn, phone, User.Role.CUSTOMER);
         customer.setStatus(UserStatus.ACTIVE);
         customer.setPin(passwordEncoder.encode("1234"));
         customer = userRepository.save(customer);
-        return accountRepository.saveAll(List.of(
+        accountRepository.saveAll(List.of(
                 new Account(accountRepository.generateUniqueIban(), AccountType.CHECKING, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer),
                 new Account(accountRepository.generateUniqueIban(), AccountType.SAVINGS, new BigDecimal("1500.00"), BigDecimal.ZERO, new BigDecimal("500.00"), customer)
         ));
-    }
-
-    private void seedPendingCustomers() {
-        seedPendingCustomer("Daan", "Bakker", pending1Email, pending1Password, "194827365", "0645678901");
-        seedPendingCustomer("Lotte", "Visser", pending2Email, pending2Password, "210394857", "0656789012");
-        seedPendingCustomer("Thijs", "Smit", pending3Email, pending3Password, "183746521", "0667890123");
-        seedPendingCustomer("Fenna", "Mulder", pending4Email, pending4Password, "172938465", "0678901234");
     }
 
     private void seedPendingCustomer(String firstName, String lastName, String email, String password,
@@ -131,6 +131,22 @@ public class DataInitializer implements CommandLineRunner {
         User customer = new User(firstName, lastName, email, passwordEncoder.encode(password), bsn, phone, User.Role.CUSTOMER);
         // status defaults to PENDING — no accounts created
         userRepository.save(customer);
+    }
+
+    private void seedTransactionsIfNeeded() {
+        if (transactionRepository.count() > 0) return;
+
+        List<String> c1Ibans = accountRepository.findOwnedIbansByUserId(userRepository.findByEmail(customerEmail).orElseThrow().getId());
+        List<String> c2Ibans = accountRepository.findOwnedIbansByUserId(userRepository.findByEmail(customer2Email).orElseThrow().getId());
+        List<String> c3Ibans = accountRepository.findOwnedIbansByUserId(userRepository.findByEmail(customer3Email).orElseThrow().getId());
+
+        if (c1Ibans.size() < 2 || c2Ibans.size() < 2 || c3Ibans.size() < 2) return;
+
+        List<Account> c1Accounts = c1Ibans.stream().map(iban -> accountRepository.findById(iban).orElseThrow()).toList();
+        List<Account> c2Accounts = c2Ibans.stream().map(iban -> accountRepository.findById(iban).orElseThrow()).toList();
+        List<Account> c3Accounts = c3Ibans.stream().map(iban -> accountRepository.findById(iban).orElseThrow()).toList();
+
+        seedTransactionHistory(c1Accounts, c2Accounts, c3Accounts);
     }
 
     private void seedTransactionHistory(List<Account> c1Accounts, List<Account> c2Accounts, List<Account> c3Accounts) {
