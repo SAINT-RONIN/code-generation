@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { transfer } from '../../services/transactions'
 import { getMyAccounts, searchByName } from '../../services/accounts'
 import { Check, ArrowDown } from 'lucide-vue-next'
@@ -14,7 +14,18 @@ import { eur } from '../../utils/format'
 import { extractError } from '../../utils/error'
 
 const route = useRoute()
+const router = useRouter()
 const mode = computed(() => route.query.mode === 'own' ? 'own' : 'other')
+
+function switchMode(m) {
+  router.replace({ query: { mode: m } })
+  // Reset form when switching modes
+  toIban.value = ''
+  selectedRecipient.value = null
+  recipientSearch.value = ''
+  recipientResults.value = []
+  error.value = ''
+}
 
 const accounts = ref([])
 const step = ref(1)
@@ -137,6 +148,26 @@ async function reset() {
       eyebrow="Banking"
       :title="mode === 'own' ? 'Move money' : 'Send to someone'"
     />
+
+    <!-- Mode toggle -->
+    <div class="flex gap-1 p-1 rounded-xl mb-6 max-w-lg" :style="{ background: 'var(--surface-2)' }">
+      <button
+        type="button"
+        class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+        :style="mode === 'own'
+          ? { background: 'var(--surface)', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,.06)' }
+          : { color: 'var(--ink-3)' }"
+        @click="switchMode('own')"
+      >Between my accounts</button>
+      <button
+        type="button"
+        class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+        :style="mode === 'other'
+          ? { background: 'var(--surface)', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,.06)' }
+          : { color: 'var(--ink-3)' }"
+        @click="switchMode('other')"
+      >Send to someone</button>
+    </div>
 
     <div class="max-w-lg">
       <!-- Step 1: Compose -->
