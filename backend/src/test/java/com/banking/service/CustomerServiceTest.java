@@ -2,6 +2,7 @@ package com.banking.service;
 
 import com.banking.dto.CustomerResponse;
 import com.banking.dto.CustomerUpdateRequest;
+import com.banking.exception.CustomerNotFoundException;
 import com.banking.mapper.CustomerMapper;
 import com.banking.model.User;
 import com.banking.model.User.UserStatus;
@@ -17,7 +18,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -147,5 +152,38 @@ class CustomerServiceTest {
 
         // Verify the repository was called with the exact limit values
         verify(accountRepository).updateLimitsByUserId(2L, new BigDecimal("5000"), new BigDecimal("-200"));
+    }
+
+    // ── Control flow: no account changes when customer lookup fails ────────────────────
+
+    /** If the customer does not exist, no accounts should be created or modified */
+    @Test
+    void noAccountsCreatedWhenCustomerNotFound() {
+        CustomerUpdateRequest request = new CustomerUpdateRequest("ACTIVE",
+                new BigDecimal("2000"), BigDecimal.ZERO);
+
+        when(userRepository.findRequiredCustomerById(99L))
+                .thenThrow(new CustomerNotFoundException(99L));
+
+        assertThrows(CustomerNotFoundException.class,
+                () -> customerService.updateCustomer(99L, request));
+
+        verify(accountRepository, never()).saveAll(any());
+        verify(accountRepository, never()).updateActiveByUserId(anyLong(), anyBoolean());
+    }
+
+    /** If the customer does not exist, no limits should be updated */
+    @Test
+    void noLimitsUpdatedWhenCustomerNotFound() {
+        CustomerUpdateRequest request = new CustomerUpdateRequest(null,
+                new BigDecimal("5000"), new BigDecimal("-200"));
+
+        when(userRepository.findRequiredCustomerById(99L))
+                .thenThrow(new CustomerNotFoundException(99L));
+
+        assertThrows(CustomerNotFoundException.class,
+                () -> customerService.updateCustomer(99L, request));
+
+        verify(accountRepository, never()).updateLimitsByUserId(anyLong(), any(), any());
     }
 }

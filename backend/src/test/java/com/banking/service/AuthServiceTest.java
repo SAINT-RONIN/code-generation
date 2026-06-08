@@ -79,6 +79,7 @@ class AuthServiceTest {
 
     // ── Login ────────────────────
 
+    
     /** Happy path: valid credentials on an active account should return a JWT token and the user's role */
     @Test
     void loginReturnsTokenForActiveUser() {

@@ -3,6 +3,7 @@ package com.banking.service;
 import com.banking.dto.AccountCreateRequest;
 import com.banking.dto.AccountResponse;
 import com.banking.dto.AccountUpdateRequest;
+import com.banking.exception.InvalidTransferException;
 import com.banking.mapper.AccountMapper;
 import com.banking.model.Account;
 import com.banking.model.Account.AccountType;
@@ -23,7 +24,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -138,5 +142,23 @@ class AccountServiceTest {
         accountService.updateAccount("NL01TEST", request);
 
         assertEquals(new BigDecimal("5000"), checkingAccount.getDailyLimit());
+    }
+
+    // ── Control flow: account not saved when policy rejects ────────────────────
+
+    /** If the customer is not ACTIVE, the policy throws and the account must never be persisted */
+    @Test
+    void createAccountNotSavedWhenCustomerIsNotActive() {
+        activeCustomer.setStatus(UserStatus.PENDING);
+        AccountCreateRequest request = new AccountCreateRequest(1L, "CHECKING", new BigDecimal("2000"), BigDecimal.ZERO);
+
+        when(userRepository.findRequiredCustomerById(1L)).thenReturn(activeCustomer);
+        doThrow(new InvalidTransferException("Customer not active"))
+                .when(accountPolicy).requireActiveCustomer(activeCustomer);
+
+        assertThrows(InvalidTransferException.class, () -> accountService.createAccount(request));
+
+        verify(accountRepository, never()).save(any(Account.class));
+        verify(accountRepository, never()).generateUniqueIban();
     }
 }
