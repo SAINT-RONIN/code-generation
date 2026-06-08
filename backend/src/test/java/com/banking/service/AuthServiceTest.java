@@ -36,6 +36,13 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class) // Enables Mockito annotations (@Mock, @InjectMocks) without Spring
 class AuthServiceTest {
 
+    private static final String EMAIL = "john@example.com";
+    private static final String PASSWORD = "password";
+    private static final String ENCODED_PASS = "encoded-pass";
+    private static final String JWT_TOKEN = "jwt-token";
+    private static final String PIN = "1234";
+    private static final String ENCODED_PIN = "encoded-pin";
+
     @Mock private UserRepository userRepository;     // Mocked — no real database calls
     @Mock private PasswordEncoder passwordEncoder;   // Mocked — no real BCrypt hashing
     @Mock private JwtUtil jwtUtil;                   // Mocked — no real JWT generation
@@ -52,7 +59,7 @@ class AuthServiceTest {
      */
     @BeforeEach
     void setUp() {
-        activeCustomer = new User("John", "Doe", "john@example.com", "encoded-pass",
+        activeCustomer = new User("John", "Doe", EMAIL, ENCODED_PASS,
                 "123456789", "0612345678", User.Role.CUSTOMER);
         activeCustomer.setId(1L);
         activeCustomer.setStatus(UserStatus.ACTIVE);
@@ -63,17 +70,17 @@ class AuthServiceTest {
     /** Verifies that registration checks email uniqueness, hashes the password, and persists the user */
     @Test
     void registerSavesNewCustomer() {
-        RegisterRequest request = new RegisterRequest("John", "Doe", "john@example.com",
-                "password", "123456789", "0612345678");
+        RegisterRequest request = new RegisterRequest("John", "Doe", EMAIL,
+                PASSWORD, "123456789", "0612345678");
 
-        when(passwordEncoder.encode("password")).thenReturn("encoded-pass");
+        when(passwordEncoder.encode(PASSWORD)).thenReturn(ENCODED_PASS);
         when(userRepository.save(any(User.class))).thenReturn(activeCustomer);
 
         User result = authService.register(request);
 
-        assertEquals("john@example.com", result.getEmail());
+        assertEquals(EMAIL, result.getEmail());
         // Verify email uniqueness was checked before saving
-        verify(userRepository).ensureEmailAvailable("john@example.com");
+        verify(userRepository).ensureEmailAvailable(EMAIL);
         verify(userRepository).save(any(User.class));
     }
 
@@ -83,27 +90,27 @@ class AuthServiceTest {
     /** Happy path: valid credentials on an active account should return a JWT token and the user's role */
     @Test
     void loginReturnsTokenForActiveUser() {
-        LoginRequest request = new LoginRequest("john@example.com", "password");
-        LoginResponse response = new LoginResponse("jwt-token", "CUSTOMER");
+        LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
+        LoginResponse response = new LoginResponse(JWT_TOKEN, "CUSTOMER");
 
-        when(userRepository.findRequiredByEmail("john@example.com")).thenReturn(activeCustomer);
-        when(passwordEncoder.matches("password", "encoded-pass")).thenReturn(true);
-        when(jwtUtil.generateToken(1L, "john@example.com")).thenReturn("jwt-token");
-        when(loginMapper.toResponse("jwt-token", activeCustomer)).thenReturn(response);
+        when(userRepository.findRequiredByEmail(EMAIL)).thenReturn(activeCustomer);
+        when(passwordEncoder.matches(PASSWORD, ENCODED_PASS)).thenReturn(true);
+        when(jwtUtil.generateToken(1L, EMAIL)).thenReturn(JWT_TOKEN);
+        when(loginMapper.toResponse(JWT_TOKEN, activeCustomer)).thenReturn(response);
 
         LoginResponse result = authService.login(request);
 
-        assertEquals("jwt-token", result.token());
+        assertEquals(JWT_TOKEN, result.token());
         assertEquals("CUSTOMER", result.role());
     }
 
     /** Wrong password must reject login and never generate a token */
     @Test
     void loginThrowsWhenPasswordIsWrong() {
-        LoginRequest request = new LoginRequest("john@example.com", "wrong-password");
+        LoginRequest request = new LoginRequest(EMAIL, "wrong-password");
 
-        when(userRepository.findRequiredByEmail("john@example.com")).thenReturn(activeCustomer);
-        when(passwordEncoder.matches("wrong-password", "encoded-pass")).thenReturn(false);
+        when(userRepository.findRequiredByEmail(EMAIL)).thenReturn(activeCustomer);
+        when(passwordEncoder.matches("wrong-password", ENCODED_PASS)).thenReturn(false);
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
 
@@ -115,13 +122,13 @@ class AuthServiceTest {
     @Test
     void loginThrowsWhenAccountIsPending() {
         activeCustomer.setStatus(UserStatus.PENDING);
-        LoginRequest request = new LoginRequest("john@example.com", "password");
+        LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
 
-        when(userRepository.findRequiredByEmail("john@example.com")).thenReturn(activeCustomer);
+        when(userRepository.findRequiredByEmail(EMAIL)).thenReturn(activeCustomer);
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
 
-        // Neither password check nor token generation should happen for pending accounts
+        // Neither password check nor token generation should happen for pending accounts because they haven't been created
         verify(passwordEncoder, never()).matches(anyString(), anyString());
         verify(jwtUtil, never()).generateToken(anyLong(), anyString());
     }
@@ -130,9 +137,9 @@ class AuthServiceTest {
     @Test
     void loginThrowsWhenAccountIsClosed() {
         activeCustomer.setStatus(UserStatus.CLOSED);
-        LoginRequest request = new LoginRequest("john@example.com", "password");
+        LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
 
-        when(userRepository.findRequiredByEmail("john@example.com")).thenReturn(activeCustomer);
+        when(userRepository.findRequiredByEmail(EMAIL)).thenReturn(activeCustomer);
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
 
@@ -146,13 +153,13 @@ class AuthServiceTest {
     /** Correct PIN should pass without throwing — used before ATM operations */
     @Test
     void verifyPinPassesWhenPinMatches() {
-        activeCustomer.setPin("encoded-pin");
+        activeCustomer.setPin(ENCODED_PIN);
 
         when(userRepository.findRequiredById(1L)).thenReturn(activeCustomer);
-        when(passwordEncoder.matches("1234", "encoded-pin")).thenReturn(true);
+        when(passwordEncoder.matches(PIN, ENCODED_PIN)).thenReturn(true);
 
         // Should complete without exception
-        authService.verifyPin(1L, "1234");
+        authService.verifyPin(1L, PIN);
 
         verify(userRepository).findRequiredById(1L);
     }
@@ -160,10 +167,10 @@ class AuthServiceTest {
     /** Wrong PIN must be rejected to prevent unauthorized ATM access */
     @Test
     void verifyPinThrowsWhenPinIsWrong() {
-        activeCustomer.setPin("encoded-pin");
+        activeCustomer.setPin(ENCODED_PIN);
 
         when(userRepository.findRequiredById(1L)).thenReturn(activeCustomer);
-        when(passwordEncoder.matches("0000", "encoded-pin")).thenReturn(false);
+        when(passwordEncoder.matches("0000", ENCODED_PIN)).thenReturn(false);
 
         assertThrows(BadCredentialsException.class, () -> authService.verifyPin(1L, "0000"));
     }
@@ -176,6 +183,6 @@ class AuthServiceTest {
 
         when(userRepository.findRequiredById(1L)).thenReturn(activeCustomer);
 
-        assertThrows(BadCredentialsException.class, () -> authService.verifyPin(1L, "1234"));
+        assertThrows(BadCredentialsException.class, () -> authService.verifyPin(1L, PIN));
     }
 }

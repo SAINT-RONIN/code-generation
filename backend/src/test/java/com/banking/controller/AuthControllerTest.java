@@ -30,6 +30,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional           // Rolls back each test's database changes so tests don't affect each other
 class AuthControllerTest {
 
+    private static final String EMAIL = "authtest@test.com";
+    private static final String PASSWORD = "secret";
+    private static final String PIN = "1234";
+
     @Autowired private MockMvc mockMvc;            // Simulates HTTP requests to the controller
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
@@ -43,11 +47,11 @@ class AuthControllerTest {
      */
     @BeforeEach
     void setUp() {
-        User customer = new User("Auth", "Tester", "authtest@test.com",
-                passwordEncoder.encode("secret"), "333333333", "0600000003", User.Role.CUSTOMER);
+        User customer = new User("Auth", "Tester", EMAIL,
+                passwordEncoder.encode(PASSWORD), "333333333", "0600000003", User.Role.CUSTOMER);
         customer.setStatus(UserStatus.ACTIVE);
         // PIN is also BCrypt-encoded, just like the password
-        customer.setPin(passwordEncoder.encode("1234"));
+        customer.setPin(passwordEncoder.encode(PIN));
         customer = userRepository.save(customer);
 
         // Pre-generate a valid JWT so verify-pin tests can authenticate
@@ -85,12 +89,12 @@ class AuthControllerTest {
                                 {
                                   "firstName": "Duplicate",
                                   "lastName": "User",
-                                  "email": "authtest@test.com",
-                                  "password": "secret",
+                                  "email": "%s",
+                                  "password": "%s",
                                   "bsn": "555555555",
                                   "phoneNumber": "0600000005"
                                 }
-                                """))
+                                """.formatted(EMAIL, PASSWORD)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").exists());
     }
@@ -103,8 +107,8 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "email": "authtest@test.com", "password": "secret" }
-                                """))
+                                { "email": "%s", "password": "%s" }
+                                """.formatted(EMAIL, PASSWORD)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.role").value("CUSTOMER"));
@@ -116,8 +120,8 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "email": "authtest@test.com", "password": "wrong" }
-                                """))
+                                { "email": "%s", "password": "wrong" }
+                                """.formatted(EMAIL)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").exists());
     }
@@ -127,7 +131,7 @@ class AuthControllerTest {
     void loginReturns401WhenAccountIsPending() throws Exception {
         // Create a separate PENDING user to test this specific scenario
         User pending = new User("Pending", "User", "pending@test.com",
-                passwordEncoder.encode("secret"), "666666666", "0600000006", User.Role.CUSTOMER);
+                passwordEncoder.encode(PASSWORD), "666666666", "0600000006", User.Role.CUSTOMER);
         pending.setStatus(UserStatus.PENDING);
         userRepository.save(pending);
 
@@ -150,8 +154,8 @@ class AuthControllerTest {
                         .header("Authorization", "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "pin": "1234" }
-                                """))
+                                { "pin": "%s" }
+                                """.formatted(PIN)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("PIN verified"));
     }
