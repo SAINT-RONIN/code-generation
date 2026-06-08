@@ -32,7 +32,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "AND (" +
            "  (LOWER(u.firstName) LIKE LOWER(CONCAT('%', :firstName, '%')) " +
            "   AND LOWER(u.lastName) LIKE LOWER(CONCAT('%', :lastName, '%'))) " +
-           "  OR (:iban IS NOT NULL AND LOWER(a.iban) LIKE LOWER(CONCAT('%', :iban, '%'))))")
+           "  OR (CAST(:iban AS string) IS NOT NULL AND LOWER(a.iban) LIKE LOWER(CONCAT('%', CAST(:iban AS string), '%'))))")
     List<IbanSearchResponse> searchApprovedCustomersByName(
             @Param("firstName") String firstName,
             @Param("lastName") String lastName,

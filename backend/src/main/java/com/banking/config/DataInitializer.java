@@ -198,9 +198,10 @@ public class DataInitializer implements CommandLineRunner {
 
     private List<Account> loadAccounts(String email) {
         Long userId = userRepository.findByEmail(email).orElseThrow().getId();
-        return accountRepository.findOwnedIbansByUserId(userId).stream()
-                .map(iban -> accountRepository.findById(iban).orElseThrow())
-                .toList();
+        List<Account> accounts = accountRepository.findByUserIdAndActiveTrue(userId);
+        // Sort so CHECKING always comes before SAVINGS (deterministic ordering)
+        accounts.sort((a, b) -> a.getAccountType().compareTo(b.getAccountType()));
+        return accounts;
     }
 
     private void resetBalance(Account account) {
