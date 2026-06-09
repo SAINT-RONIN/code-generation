@@ -3,28 +3,22 @@ package com.banking.controller;
 import com.banking.dto.LoginRequest;
 import com.banking.dto.LoginResponse;
 import com.banking.dto.RegisterRequest;
-import com.banking.dto.VerifyPinRequest;
-import com.banking.security.AuthenticatedUser;
 import com.banking.service.interfaces.IAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 /**
- * Handles authentication-related endpoints: registration, login, and PIN verification.
- * All endpoints under /api/auth. Login and register are public; verify-pin requires a valid JWT.
+ * Handles authentication-related endpoints: registration and login.
+ * All endpoints under /api/auth are public (no JWT required).
  */
 @RestController                         // Combines @Controller + @ResponseBody — returns JSON directly
 @RequestMapping("/api/auth")            // Base path for all endpoints in this controller
@@ -72,23 +66,4 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    /**
-     * Verifies the customer's ATM PIN. Requires a valid JWT (the user must already be logged in).
-     * Used by the ATM interface before allowing deposits or withdrawals.
-     */
-    @Operation(summary = "Verify the signed-in user's PIN")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "PIN verified"),
-            @ApiResponse(responseCode = "400", description = "Validation error"),
-            @ApiResponse(responseCode = "401", description = "Incorrect PIN")
-    })
-    @SecurityRequirement(name = "bearerAuth") // Tells Swagger this endpoint needs a JWT
-    @PostMapping("/verify-pin")
-    public ResponseEntity<Map<String, String>> verifyPin(
-            @Valid @RequestBody VerifyPinRequest request,
-            // @AuthenticationPrincipal extracts our custom AuthenticatedUser from the SecurityContext
-            @AuthenticationPrincipal AuthenticatedUser caller) {
-        authService.verifyPin(caller.getId(), request.pin());
-        return ResponseEntity.ok(Map.of("message", "PIN verified"));
-    }
 }

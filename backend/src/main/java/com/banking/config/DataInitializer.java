@@ -127,7 +127,6 @@ public class DataInitializer implements CommandLineRunner {
                 User.Role.EMPLOYEE
         );
         employee.setStatus(UserStatus.ACTIVE);
-        employee.setPin(passwordEncoder.encode("1234"));
         userRepository.save(employee);
     }
 
@@ -135,7 +134,6 @@ public class DataInitializer implements CommandLineRunner {
                                     String bsn, String phone) {
         User customer = new User(firstName, lastName, email, passwordEncoder.encode(password), bsn, phone, User.Role.CUSTOMER);
         customer.setStatus(UserStatus.ACTIVE);
-        customer.setPin(passwordEncoder.encode("1234"));
         customer = userRepository.save(customer);
         accountRepository.saveAll(List.of(
                 new Account(accountRepository.generateUniqueIban(), AccountType.CHECKING, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("2000.00"), customer),

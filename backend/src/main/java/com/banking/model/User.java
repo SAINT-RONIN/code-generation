@@ -39,8 +39,6 @@ public class User {
 
     private String password;
 
-    private String pin;
-
     private String bsn;
 
     private String phoneNumber;

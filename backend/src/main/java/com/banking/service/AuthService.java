@@ -14,7 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
- * Handles user registration, login authentication, and PIN verification.
+ * Handles user registration and login authentication.
  * New customers register with PENDING status and must be approved by an employee before they can log in.
  */
 @Service // Registers this class as a Spring-managed service bean
@@ -86,20 +86,6 @@ public class AuthService implements IAuthService {
         }
         if (user.getStatus() == UserStatus.CLOSED) {
             throw new BadCredentialsException("Account has been closed.");
-        }
-    }
-
-    /**
-     * Verifies a customer's ATM PIN.
-     * The PIN is stored as a BCrypt hash in the database, just like the password.
-     * Throws BadCredentialsException (401) if the PIN is wrong or not set.
-     */
-    @Override
-    public void verifyPin(Long userId, String pin) {
-        User user = userRepository.findRequiredById(userId);
-        // Check that the user has a PIN set and that it matches the provided value
-        if (user.getPin() == null || !passwordEncoder.matches(pin, user.getPin())) {
-            throw new BadCredentialsException("Incorrect PIN");
         }
     }
 

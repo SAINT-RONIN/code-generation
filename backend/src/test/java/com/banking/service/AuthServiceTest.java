@@ -28,8 +28,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for AuthService using Mockito mocks.
- * Tests registration, login, and PIN verification logic in isolation
- * without a database or Spring context.
+ * Tests registration and login logic in isolation without a database or Spring context.
  *
  * Uses @Mock for dependencies and @InjectMocks to wire them into the service.
  */
@@ -40,9 +39,6 @@ class AuthServiceTest {
     private static final String PASSWORD = "password";
     private static final String ENCODED_PASS = "encoded-pass";
     private static final String JWT_TOKEN = "jwt-token";
-    private static final String PIN = "1234";
-    private static final String ENCODED_PIN = "encoded-pin";
-
     @Mock private UserRepository userRepository;     // Mocked — no real database calls
     @Mock private PasswordEncoder passwordEncoder;   // Mocked — no real BCrypt hashing
     @Mock private JwtUtil jwtUtil;                   // Mocked — no real JWT generation
@@ -54,7 +50,7 @@ class AuthServiceTest {
     private User activeCustomer;
 
     /**
-     * Creates a reusable active customer entity for login and PIN tests.
+     * Creates a reusable active customer entity for login tests.
      * The ID is set manually because there's no database to auto-generate it.
      */
     @BeforeEach
@@ -86,8 +82,7 @@ class AuthServiceTest {
 
     // ── Login ────────────────────
 
-    
-    /** Happy path: valid credentials on an active account should return a JWT token and the user's role */
+    /** Happy path: valid credentials on an active account should return a JWT token and the user role */
     @Test
     void loginReturnsTokenForActiveUser() {
         LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
@@ -148,41 +143,4 @@ class AuthServiceTest {
         verify(jwtUtil, never()).generateToken(anyLong(), anyString());
     }
 
-    // ── Verify PIN ────────────────────
-
-    /** Correct PIN should pass without throwing — used before ATM operations */
-    @Test
-    void verifyPinPassesWhenPinMatches() {
-        activeCustomer.setPin(ENCODED_PIN);
-
-        when(userRepository.findRequiredById(1L)).thenReturn(activeCustomer);
-        when(passwordEncoder.matches(PIN, ENCODED_PIN)).thenReturn(true);
-
-        // Should complete without exception
-        authService.verifyPin(1L, PIN);
-
-        verify(userRepository).findRequiredById(1L);
-    }
-
-    /** Wrong PIN must be rejected to prevent unauthorized ATM access */
-    @Test
-    void verifyPinThrowsWhenPinIsWrong() {
-        activeCustomer.setPin(ENCODED_PIN);
-
-        when(userRepository.findRequiredById(1L)).thenReturn(activeCustomer);
-        when(passwordEncoder.matches("0000", ENCODED_PIN)).thenReturn(false);
-
-        assertThrows(BadCredentialsException.class, () -> authService.verifyPin(1L, "0000"));
-    }
-
-    /** A user who never set a PIN should be rejected rather than crashing on a null comparison */
-    @Test
-    void verifyPinThrowsWhenPinIsNull() {
-        // PIN is null — the service must handle this gracefully (null check before matches())
-        activeCustomer.setPin(null);
-
-        when(userRepository.findRequiredById(1L)).thenReturn(activeCustomer);
-
-        assertThrows(BadCredentialsException.class, () -> authService.verifyPin(1L, PIN));
-    }
 }

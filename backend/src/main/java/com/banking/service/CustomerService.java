@@ -18,10 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * Manages customer lifecycle: listing, approval, limit updates, and status transitions.
- * Employee-only operations — access control is enforced at the controller level.
- */
+
 @Service
 public class CustomerService implements ICustomerService {
 
@@ -56,7 +53,7 @@ public class CustomerService implements ICustomerService {
      * - Limit updates: changes daily/absolute limits on all customer accounts
      */
     @Override
-    @Transactional // Wraps everything in a single database transaction for consistency
+    @Transactional
     public CustomerResponse updateCustomer(Long id, CustomerUpdateRequest request) {
         User customer = userRepository.findRequiredCustomerById(id);
         if (request.status() != null) {

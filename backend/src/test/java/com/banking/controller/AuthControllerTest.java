@@ -3,7 +3,6 @@ package com.banking.controller;
 import com.banking.model.User;
 import com.banking.model.User.UserStatus;
 import com.banking.repository.UserRepository;
-import com.banking.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,42 +19,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Integration tests for the AuthController (register, login, verify-pin).
- * Uses a real Spring context with an in-memory H2 database to test the full
- * HTTP request/response cycle including validation, security, and error handling.
- */
-@SpringBootTest          // Boots the full Spring application context (controllers, services, repos, security)
-@AutoConfigureMockMvc    // Creates a MockMvc instance that simulates HTTP requests without starting a real server
-@Transactional           // Rolls back each test's database changes so tests don't affect each other
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
 class AuthControllerTest {
 
     private static final String EMAIL = "authtest@test.com";
     private static final String PASSWORD = "secret";
-    private static final String PIN = "1234";
 
-    @Autowired private MockMvc mockMvc;            // Simulates HTTP requests to the controller
+    @Autowired private MockMvc mockMvc;
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
-    @Autowired private JwtUtil jwtUtil;
 
-    private String customerToken;
-
-    /**
-     * Creates an active customer with a known password and PIN before each test.
-     * Generates a JWT token for tests that require authentication (e.g. verify-pin).
-     */
+    /** Creates an active customer with a known password before each test. */
     @BeforeEach
     void setUp() {
         User customer = new User("Auth", "Tester", EMAIL,
                 passwordEncoder.encode(PASSWORD), "333333333", "0600000003", User.Role.CUSTOMER);
         customer.setStatus(UserStatus.ACTIVE);
-        // PIN is also BCrypt-encoded, just like the password
-        customer.setPin(passwordEncoder.encode(PIN));
-        customer = userRepository.save(customer);
-
-        // Pre-generate a valid JWT so verify-pin tests can authenticate
-        customerToken = jwtUtil.generateToken(customer.getId(), customer.getEmail());
+        userRepository.save(customer);
     }
 
     // ── Register ────────────────────
@@ -139,35 +121,6 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "email": "pending@test.com", "password": "secret" }
-                                """))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").exists());
-    }
-
-    // ── Verify PIN ────────────────────
-
-    /** Correct PIN should pass — this is the guard before ATM operations */
-    @Test
-    void verifyPinReturns200WhenCorrect() throws Exception {
-        mockMvc.perform(post("/api/auth/verify-pin")
-                        // Send the JWT token so the endpoint knows who the caller is
-                        .header("Authorization", "Bearer " + customerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "pin": "%s" }
-                                """.formatted(PIN)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("PIN verified"));
-    }
-
-    /** Wrong PIN must be rejected to protect account access */
-    @Test
-    void verifyPinReturns401WhenIncorrect() throws Exception {
-        mockMvc.perform(post("/api/auth/verify-pin")
-                        .header("Authorization", "Bearer " + customerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "pin": "0000" }
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").exists());
