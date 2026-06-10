@@ -25,7 +25,7 @@ const showFilters = ref(false)
 const selectedTx = ref(null)
 const selectedIban = ref('')
 
-const filters = ref({ amountMin: '', amountMax: '', transactionType: '' })
+const filters = ref({ from: '', to: '', amountMin: '', amountMax: '', transactionType: '' })
 
 async function loadTransactions() {
   loading.value = true
@@ -35,6 +35,8 @@ async function loadTransactions() {
     if (!iban) { transactions.value = []; loading.value = false; return }
 
     const params = { iban, page: page.value, size: pageSize, sort: 'timestamp,desc' }
+    if (filters.value.from) params.from = filters.value.from
+    if (filters.value.to) params.to = filters.value.to
     if (filters.value.amountMin) params.amountMin = filters.value.amountMin
     if (filters.value.amountMax) params.amountMax = filters.value.amountMax
     if (filters.value.transactionType) params.transactionType = filters.value.transactionType
@@ -60,7 +62,7 @@ onMounted(async () => {
 watch(page, loadTransactions)
 
 function applyFilters() { page.value = 0; loadTransactions() }
-function clearFilters() { filters.value = { amountMin: '', amountMax: '', transactionType: '' }; page.value = 0; loadTransactions() }
+function clearFilters() { filters.value = { from: '', to: '', amountMin: '', amountMax: '', transactionType: '' }; page.value = 0; loadTransactions() }
 
 function fmtTime(ts) {
   if (!ts) return '—'
@@ -93,7 +95,19 @@ function fmtTime(ts) {
     </div>
 
     <div v-if="showFilters" class="mb-4 rounded-2xl border p-4" :style="{ background: 'var(--surface)', borderColor: 'var(--line)' }">
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
+        <div>
+          <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--ink-2)' }">From date</label>
+          <input v-model="filters.from" type="date"
+            class="w-full h-9 px-3 text-sm rounded-lg border"
+            :style="{ background: 'var(--surface-2)', borderColor: 'var(--line-2)', color: 'var(--ink)' }" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--ink-2)' }">To date</label>
+          <input v-model="filters.to" type="date"
+            class="w-full h-9 px-3 text-sm rounded-lg border"
+            :style="{ background: 'var(--surface-2)', borderColor: 'var(--line-2)', color: 'var(--ink)' }" />
+        </div>
         <div>
           <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--ink-2)' }">Min amount (€)</label>
           <input v-model="filters.amountMin" type="number" placeholder="0"

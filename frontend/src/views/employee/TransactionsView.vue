@@ -19,7 +19,7 @@ const loading = ref(true)
 const error = ref('')
 
 const showFilters = ref(false)
-const filters = ref({ amountMin: '', amountMax: '', iban: '', transactionType: '' })
+const filters = ref({ from: '', to: '', amountMin: '', amountMax: '', iban: '', transactionType: '' })
 const selectedTx = ref(null)
 
 async function load() {
@@ -31,6 +31,8 @@ async function load() {
       size: pageSize,
       sort: 'timestamp,desc',
     }
+    if (filters.value.from) params.from = filters.value.from
+    if (filters.value.to) params.to = filters.value.to
     if (filters.value.amountMin) params.amountMin = filters.value.amountMin
     if (filters.value.amountMax) params.amountMax = filters.value.amountMax
     if (filters.value.iban) params.iban = filters.value.iban
@@ -55,7 +57,7 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  filters.value = { amountMin: '', amountMax: '', iban: '', transactionType: '' }
+  filters.value = { from: '', to: '', amountMin: '', amountMax: '', iban: '', transactionType: '' }
   page.value = 0
   load()
 }
@@ -84,7 +86,19 @@ function txLabel(type) {
 
     <!-- Filter bar -->
     <div v-if="showFilters" class="mb-6 rounded-2xl border p-5" :style="{ background: 'var(--surface)', borderColor: 'var(--line)' }">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4">
+        <div>
+          <label class="block text-xs font-medium mb-1.5" :style="{ color: 'var(--ink-2)' }">From date</label>
+          <input v-model="filters.from" type="date"
+            class="w-full h-9 px-3 text-sm rounded-lg border"
+            :style="{ background: 'var(--surface-2)', borderColor: 'var(--line-2)', color: 'var(--ink)' }" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1.5" :style="{ color: 'var(--ink-2)' }">To date</label>
+          <input v-model="filters.to" type="date"
+            class="w-full h-9 px-3 text-sm rounded-lg border"
+            :style="{ background: 'var(--surface-2)', borderColor: 'var(--line-2)', color: 'var(--ink)' }" />
+        </div>
         <div>
           <label class="block text-xs font-medium mb-1.5" :style="{ color: 'var(--ink-2)' }">Min amount (€)</label>
           <input v-model="filters.amountMin" type="number" placeholder="0"
