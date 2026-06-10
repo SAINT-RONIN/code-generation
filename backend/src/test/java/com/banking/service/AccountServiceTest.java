@@ -31,12 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit tests for AccountService using Mockito mocks.
- * Tests account creation, retrieval, and updates in isolation without a database.
- * Verifies that the service correctly delegates to repositories and the AccountPolicy.
- */
-@ExtendWith(MockitoExtension.class) // Enables Mockito annotations without booting Spring
+@ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
 
     @Mock private UserRepository userRepository;
@@ -44,24 +39,20 @@ class AccountServiceTest {
     @Mock private AccountMapper accountMapper;
     @Mock private AccountPolicy accountPolicy;
 
-    @InjectMocks // Creates a real AccountService with the mocked dependencies
+    @InjectMocks
     private AccountService accountService;
 
     private User activeCustomer;
     private Account checkingAccount;
     private AccountResponse accountResponse;
 
-    /**
-     * Creates a customer, a checking account, and a matching response DTO
-     * that are reused across all tests in this class.
-     */
+    // Creates a customer, checking account, and response DTO reused across tests.
     @BeforeEach
     void setUp() {
         activeCustomer = new User("Test", "Customer", "test@test.com", "pass", "123456789", "0600000000", User.Role.CUSTOMER);
         activeCustomer.setId(1L);
         activeCustomer.setStatus(UserStatus.ACTIVE);
 
-        // Account with €1000 balance, €0 absolute limit (no overdraft), €2000 daily limit
         checkingAccount = new Account("NL01TEST", AccountType.CHECKING,
                 new BigDecimal("1000"), BigDecimal.ZERO, new BigDecimal("2000"), activeCustomer);
 
@@ -72,7 +63,7 @@ class AccountServiceTest {
 
     // ── Create account ────────────────────
 
-    /** Verifies the full creation flow: find customer → check active status → generate IBAN → save → return DTO */
+    // Account is saved and returned as a response DTO.
     @Test
     void createAccountSavesAndReturnsResponse() {
         AccountCreateRequest request = new AccountCreateRequest(1L, "CHECKING", new BigDecimal("2000"), BigDecimal.ZERO);
@@ -85,14 +76,13 @@ class AccountServiceTest {
         AccountResponse result = accountService.createAccount(request);
 
         assertEquals("NL01TEST", result.iban());
-        // Verify the policy was consulted to ensure the customer is ACTIVE
         verify(accountPolicy).requireActiveCustomer(activeCustomer);
         verify(accountRepository).save(any(Account.class));
     }
 
     // ── Find my accounts ────────────────────
 
-    /** Ensures the service returns mapped DTOs for the customer's active accounts */
+    // Returns mapped DTOs for the customer's active accounts.
     @Test
     void findMyAccountsReturnsMappedAccounts() {
         when(accountRepository.findByUserIdAndActiveTrue(1L)).thenReturn(List.of(checkingAccount));
@@ -104,7 +94,7 @@ class AccountServiceTest {
         assertEquals("NL01TEST", result.get(0).iban());
     }
 
-    /** A customer with no accounts should get an empty list, not an error */
+    // Returns an empty list when the customer has no accounts.
     @Test
     void findMyAccountsReturnsEmptyListWhenNoAccounts() {
         when(accountRepository.findByUserIdAndActiveTrue(1L)).thenReturn(List.of());
@@ -116,7 +106,7 @@ class AccountServiceTest {
 
     // ── Update account ────────────────────
 
-    /** Verifies that setting active=false actually calls deactivate() on the account entity */
+    // Setting active to false deactivates the account.
     @Test
     void updateAccountDeactivatesAccount() {
         AccountUpdateRequest request = new AccountUpdateRequest(false, null, null);
@@ -126,14 +116,12 @@ class AccountServiceTest {
 
         accountService.updateAccount("NL01TEST", request);
 
-        // The account entity should now be inactive
         assertFalse(checkingAccount.isActive());
     }
 
-    /** Verifies that partial updates work — only the daily limit changes, other fields stay untouched */
+    // Partial update only changes the daily limit.
     @Test
     void updateAccountChangesDailyLimit() {
-        // Only dailyLimit is set — active and absoluteLimit should remain unchanged
         AccountUpdateRequest request = new AccountUpdateRequest(null, new BigDecimal("5000"), null);
 
         when(accountRepository.findRequiredById("NL01TEST")).thenReturn(checkingAccount);
@@ -144,9 +132,9 @@ class AccountServiceTest {
         assertEquals(new BigDecimal("5000"), checkingAccount.getDailyLimit());
     }
 
-    // ── Control flow: account not saved when policy rejects ────────────────────
+    // ── Policy rejection ────────────────────
 
-    /** If the customer is not ACTIVE, the policy throws and the account must never be persisted */
+    // Account is never saved when the customer is not active.
     @Test
     void createAccountNotSavedWhenCustomerIsNotActive() {
         activeCustomer.setStatus(UserStatus.PENDING);

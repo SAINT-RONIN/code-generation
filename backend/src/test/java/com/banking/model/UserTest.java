@@ -8,15 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Unit tests for the User entity model.
- * Verifies constructor field assignment, default values, and status transitions.
- *
- * Pure unit tests — no Spring context, no database.
- */
 class UserTest {
 
-    /** Constructor should store all provided fields correctly */
+    // Constructor stores all provided fields correctly.
     @Test
     void constructorSetsAllFields() {
         User user = new User("John", "Doe", "john@test.com", "hashed-pass",
@@ -31,7 +25,7 @@ class UserTest {
         assertEquals(Role.CUSTOMER, user.getRole());
     }
 
-    /** New users should default to PENDING status until an employee approves them */
+    // New users default to PENDING status.
     @Test
     void newUserDefaultsToPendingStatus() {
         User user = new User("Jane", "Smith", "jane@test.com", "pass",
@@ -40,7 +34,7 @@ class UserTest {
         assertEquals(UserStatus.PENDING, user.getStatus());
     }
 
-    /** New users should start with an empty accounts list, not null */
+    // New users start with an empty accounts list.
     @Test
     void newUserHasEmptyAccountsList() {
         User user = new User("Jane", "Smith", "jane@test.com", "pass",
@@ -50,7 +44,7 @@ class UserTest {
         assertTrue(user.getAccounts().isEmpty());
     }
 
-    /** Status can transition from PENDING to ACTIVE (employee approval) */
+    // Status can be changed to ACTIVE.
     @Test
     void statusCanBeChangedToActive() {
         User user = new User("John", "Doe", "john@test.com", "pass",
@@ -61,7 +55,7 @@ class UserTest {
         assertEquals(UserStatus.ACTIVE, user.getStatus());
     }
 
-    /** Status can transition from ACTIVE to CLOSED (employee deactivation) */
+    // Status can be changed to CLOSED.
     @Test
     void statusCanBeChangedToClosed() {
         User user = new User("John", "Doe", "john@test.com", "pass",
@@ -73,7 +67,7 @@ class UserTest {
         assertEquals(UserStatus.CLOSED, user.getStatus());
     }
 
-    /** Employee role should be stored correctly */
+    // Employee role is stored correctly.
     @Test
     void employeeRoleIsStored() {
         User user = new User("Admin", "User", "admin@bank.com", "pass",

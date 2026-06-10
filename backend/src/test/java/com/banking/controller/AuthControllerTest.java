@@ -31,7 +31,7 @@ class AuthControllerTest {
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
-    /** Creates an active customer with a known password before each test. */
+    // Creates an active customer with known credentials before each test.
     @BeforeEach
     void setUp() {
         User customer = new User("Auth", "Tester", EMAIL,
@@ -42,7 +42,7 @@ class AuthControllerTest {
 
     // ── Register ────────────────────
 
-    /** A valid registration should succeed and tell the user to wait for employee approval */
+    // Valid registration returns 201 with a success message.
     @Test
     void registerReturns201OnSuccess() throws Exception {
         mockMvc.perform(post("/api/auth/register")
@@ -61,10 +61,9 @@ class AuthControllerTest {
                 .andExpect(content().string("Registration successful. Await employee approval."));
     }
 
-    /** Duplicate emails must be rejected to enforce unique user accounts */
+    // Registering with an already-used email returns 409.
     @Test
     void registerReturns409WhenEmailAlreadyInUse() throws Exception {
-        // Use the same email as the user created in setUp()
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -83,7 +82,7 @@ class AuthControllerTest {
 
     // ── Login ────────────────────
 
-    /** Valid credentials should return a JWT token and the user's role */
+    // Valid credentials return a JWT token and the user's role.
     @Test
     void loginReturns200WithToken() throws Exception {
         mockMvc.perform(post("/api/auth/login")
@@ -96,7 +95,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.role").value("CUSTOMER"));
     }
 
-    /** Wrong password must return 401 to prevent unauthorized access */
+    // Wrong password returns 401.
     @Test
     void loginReturns401WhenPasswordIsWrong() throws Exception {
         mockMvc.perform(post("/api/auth/login")
@@ -108,10 +107,9 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").exists());
     }
 
-    /** Pending accounts have not been approved yet — they must not be allowed to log in */
+    // Pending accounts cannot log in and get 401.
     @Test
     void loginReturns401WhenAccountIsPending() throws Exception {
-        // Create a separate PENDING user to test this specific scenario
         User pending = new User("Pending", "User", "pending@test.com",
                 passwordEncoder.encode(PASSWORD), "666666666", "0600000006", User.Role.CUSTOMER);
         pending.setStatus(UserStatus.PENDING);
@@ -126,11 +124,9 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").exists());
     }
 
-    // ── Validation rules ────────────────────
-    // These tests verify that @Valid / @NotBlank / @Email annotations on the DTO
-    // catch bad input BEFORE it reaches the service layer.
+    // ── Validation ────────────────────
 
-    /** Blank email should be caught by @NotBlank before reaching the service */
+    // Blank email is rejected with 400.
     @Test
     void loginRejectsBlankEmail() throws Exception {
         mockMvc.perform(post("/api/auth/login")
@@ -142,7 +138,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("email")));
     }
 
-    /** Malformed email should be caught by @Email before reaching the service */
+    // Malformed email is rejected with 400.
     @Test
     void loginRejectsInvalidEmail() throws Exception {
         mockMvc.perform(post("/api/auth/login")
@@ -154,7 +150,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("email")));
     }
 
-    /** Blank password should be caught by @NotBlank before reaching the service */
+    // Blank password is rejected with 400.
     @Test
     void loginRejectsBlankPassword() throws Exception {
         mockMvc.perform(post("/api/auth/login")
@@ -166,7 +162,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("password")));
     }
 
-    /** All register fields are required — blank firstName should be caught by validation */
+    // Blank first name on register is rejected with 400.
     @Test
     void registerRejectsBlankFirstName() throws Exception {
         mockMvc.perform(post("/api/auth/register")
@@ -185,7 +181,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("firstName")));
     }
 
-    /** Missing password field should be caught by @NotBlank validation */
+    // Missing password on register is rejected with 400.
     @Test
     void registerRejectsMissingPassword() throws Exception {
         mockMvc.perform(post("/api/auth/register")

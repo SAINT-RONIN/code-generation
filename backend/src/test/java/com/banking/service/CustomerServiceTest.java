@@ -26,29 +26,21 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit tests for CustomerService using Mockito mocks.
- * Tests the customer lifecycle: approval (PENDING → ACTIVE), closing, reactivation,
- * and limit updates — all in isolation without a database.
- */
-@ExtendWith(MockitoExtension.class) // Enables Mockito annotations without booting Spring
+@ExtendWith(MockitoExtension.class)
 class CustomerServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private AccountRepository accountRepository;
     @Mock private CustomerMapper customerMapper;
 
-    @InjectMocks // Creates a real CustomerService with the mocked dependencies
+    @InjectMocks
     private CustomerService customerService;
 
     private User pendingCustomer;
     private User activeCustomer;
     private CustomerResponse customerResponse;
 
-    /**
-     * Creates two customer entities (pending and active) and a reusable response DTO.
-     * IDs are set manually since there's no database auto-generation.
-     */
+    // Creates a pending customer, an active customer, and a response DTO.
     @BeforeEach
     void setUp() {
         pendingCustomer = new User("John", "Doe", "john@example.com", "pass",
@@ -67,26 +59,23 @@ class CustomerServiceTest {
 
     // ── Approve customer (PENDING → ACTIVE) ────────────────────
 
-    /** Approving a pending customer should activate them and create their checking + savings accounts */
+    // Approving activates the customer and creates their checking + savings accounts.
     @Test
     void approvePendingCustomerCreatesAccountsAndActivates() {
         CustomerUpdateRequest request = new CustomerUpdateRequest("ACTIVE",
                 new BigDecimal("3000"), new BigDecimal("-100"));
 
         when(userRepository.findRequiredCustomerById(1L)).thenReturn(pendingCustomer);
-        // generateUniqueIban() is called twice — once for checking, once for savings
         when(accountRepository.generateUniqueIban()).thenReturn("NL01TEST", "NL02TEST");
         when(customerMapper.toResponse(pendingCustomer)).thenReturn(customerResponse);
 
         customerService.updateCustomer(1L, request);
 
-        // Verify the customer's status was changed to ACTIVE
         assertEquals(UserStatus.ACTIVE, pendingCustomer.getStatus());
-        // Verify that two accounts were saved (checking + savings)
         verify(accountRepository).saveAll(any());
     }
 
-    /** When no limits are specified during approval, the service should apply sensible defaults (€2000 daily, €0 absolute) */
+    // Approving without limits uses sensible defaults.
     @Test
     void approveWithDefaultLimitsWhenNoneProvided() {
         CustomerUpdateRequest request = new CustomerUpdateRequest("ACTIVE", null, null);
@@ -103,7 +92,7 @@ class CustomerServiceTest {
 
     // ── Close customer ────────────────────
 
-    /** Closing a customer should mark them CLOSED and deactivate all their accounts */
+    // Closing sets status to CLOSED and deactivates all accounts.
     @Test
     void closeCustomerDeactivatesAccounts() {
         CustomerUpdateRequest request = new CustomerUpdateRequest("CLOSED", null, null);
@@ -114,16 +103,15 @@ class CustomerServiceTest {
         customerService.updateCustomer(2L, request);
 
         assertEquals(UserStatus.CLOSED, activeCustomer.getStatus());
-        // Verify that all accounts were deactivated (active = false)
         verify(accountRepository).updateActiveByUserId(2L, false);
     }
 
     // ── Reactivate closed customer ────────────────────
 
-    /** Reactivating a closed customer should restore their status and re-enable their accounts */
+    // Reactivating restores ACTIVE status and re-enables all accounts.
     @Test
     void reactivateClosedCustomerActivatesAccounts() {
-        activeCustomer.setStatus(UserStatus.CLOSED); // Simulate a previously closed customer
+        activeCustomer.setStatus(UserStatus.CLOSED);
         CustomerUpdateRequest request = new CustomerUpdateRequest("ACTIVE", null, null);
 
         when(userRepository.findRequiredCustomerById(2L)).thenReturn(activeCustomer);
@@ -132,16 +120,14 @@ class CustomerServiceTest {
         customerService.updateCustomer(2L, request);
 
         assertEquals(UserStatus.ACTIVE, activeCustomer.getStatus());
-        // Verify that all accounts were reactivated (active = true)
         verify(accountRepository).updateActiveByUserId(2L, true);
     }
 
     // ── Update limits ────────────────────
 
-    /** Updating limits without changing status should only modify the account limits in the database */
+    // Updating limits without changing status only modifies account limits.
     @Test
     void updateLimitsCallsRepositoryUpdate() {
-        // No status change — just limit updates
         CustomerUpdateRequest request = new CustomerUpdateRequest(null,
                 new BigDecimal("5000"), new BigDecimal("-200"));
 
@@ -150,13 +136,12 @@ class CustomerServiceTest {
 
         customerService.updateCustomer(2L, request);
 
-        // Verify the repository was called with the exact limit values
         verify(accountRepository).updateLimitsByUserId(2L, new BigDecimal("5000"), new BigDecimal("-200"));
     }
 
-    // ── Control flow: no account changes when customer lookup fails ────────────────────
+    // ── Customer not found ────────────────────
 
-    /** If the customer does not exist, no accounts should be created or modified */
+    // No accounts are created when the customer doesn't exist.
     @Test
     void noAccountsCreatedWhenCustomerNotFound() {
         CustomerUpdateRequest request = new CustomerUpdateRequest("ACTIVE",
@@ -172,7 +157,7 @@ class CustomerServiceTest {
         verify(accountRepository, never()).updateActiveByUserId(anyLong(), anyBoolean());
     }
 
-    /** If the customer does not exist, no limits should be updated */
+    // No limits are updated when the customer doesn't exist.
     @Test
     void noLimitsUpdatedWhenCustomerNotFound() {
         CustomerUpdateRequest request = new CustomerUpdateRequest(null,

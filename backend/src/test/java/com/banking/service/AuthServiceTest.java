@@ -26,33 +26,25 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit tests for AuthService using Mockito mocks.
- * Tests registration and login logic in isolation without a database or Spring context.
- *
- * Uses @Mock for dependencies and @InjectMocks to wire them into the service.
- */
-@ExtendWith(MockitoExtension.class) // Enables Mockito annotations (@Mock, @InjectMocks) without Spring
+@ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
     private static final String EMAIL = "john@example.com";
     private static final String PASSWORD = "password";
     private static final String ENCODED_PASS = "encoded-pass";
     private static final String JWT_TOKEN = "jwt-token";
-    @Mock private UserRepository userRepository;     // Mocked — no real database calls
-    @Mock private PasswordEncoder passwordEncoder;   // Mocked — no real BCrypt hashing
-    @Mock private JwtUtil jwtUtil;                   // Mocked — no real JWT generation
-    @Mock private LoginMapper loginMapper;           // Mocked — no real DTO mapping
 
-    @InjectMocks // Creates a real AuthService and injects the mocks above into its constructor
+    @Mock private UserRepository userRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private JwtUtil jwtUtil;
+    @Mock private LoginMapper loginMapper;
+
+    @InjectMocks
     private AuthService authService;
 
     private User activeCustomer;
 
-    /**
-     * Creates a reusable active customer entity for login tests.
-     * The ID is set manually because there's no database to auto-generate it.
-     */
+    // Creates an active customer for login tests.
     @BeforeEach
     void setUp() {
         activeCustomer = new User("John", "Doe", EMAIL, ENCODED_PASS,
@@ -63,7 +55,7 @@ class AuthServiceTest {
 
     // ── Register ────────────────────
 
-    /** Verifies that registration checks email uniqueness, hashes the password, and persists the user */
+    // Registration checks email uniqueness, hashes the password, and saves the user.
     @Test
     void registerSavesNewCustomer() {
         RegisterRequest request = new RegisterRequest("John", "Doe", EMAIL,
@@ -75,14 +67,13 @@ class AuthServiceTest {
         User result = authService.register(request);
 
         assertEquals(EMAIL, result.getEmail());
-        // Verify email uniqueness was checked before saving
         verify(userRepository).ensureEmailAvailable(EMAIL);
         verify(userRepository).save(any(User.class));
     }
 
     // ── Login ────────────────────
 
-    /** Happy path: valid credentials on an active account should return a JWT token and the user role */
+    // Valid credentials return a JWT token and the user's role.
     @Test
     void loginReturnsTokenForActiveUser() {
         LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
@@ -99,7 +90,7 @@ class AuthServiceTest {
         assertEquals("CUSTOMER", result.role());
     }
 
-    /** Wrong password must reject login and never generate a token */
+    // Wrong password throws and no token is generated.
     @Test
     void loginThrowsWhenPasswordIsWrong() {
         LoginRequest request = new LoginRequest(EMAIL, "wrong-password");
@@ -109,11 +100,10 @@ class AuthServiceTest {
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
 
-        // Token should never be generated when password is wrong
         verify(jwtUtil, never()).generateToken(anyLong(), anyString());
     }
 
-    /** Pending accounts must not log in — the flow should stop before password check or token generation */
+    // Pending accounts are rejected before password check or token generation.
     @Test
     void loginThrowsWhenAccountIsPending() {
         activeCustomer.setStatus(UserStatus.PENDING);
@@ -123,12 +113,11 @@ class AuthServiceTest {
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
 
-        // Neither password check nor token generation should happen for pending accounts because they haven't been created
         verify(passwordEncoder, never()).matches(anyString(), anyString());
         verify(jwtUtil, never()).generateToken(anyLong(), anyString());
     }
 
-    /** Closed accounts must not log in — the flow should stop before password check or token generation */
+    // Closed accounts are rejected before password check or token generation.
     @Test
     void loginThrowsWhenAccountIsClosed() {
         activeCustomer.setStatus(UserStatus.CLOSED);
@@ -138,9 +127,7 @@ class AuthServiceTest {
 
         assertThrows(BadCredentialsException.class, () -> authService.login(request));
 
-        // Same as pending — short-circuit before expensive operations
         verify(passwordEncoder, never()).matches(anyString(), anyString());
         verify(jwtUtil, never()).generateToken(anyLong(), anyString());
     }
-
 }

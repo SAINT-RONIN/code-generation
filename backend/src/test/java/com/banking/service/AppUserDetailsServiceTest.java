@@ -20,11 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit tests for AppUserDetailsService.
- * Verifies that Spring Security's loadUserByUsername correctly delegates to the
- * repository and returns the right enabled/disabled state based on user status.
- */
 @ExtendWith(MockitoExtension.class)
 class AppUserDetailsServiceTest {
 
@@ -33,7 +28,7 @@ class AppUserDetailsServiceTest {
     @InjectMocks
     private AppUserDetailsService appUserDetailsService;
 
-    /** An active user should be loaded as an enabled UserDetails with the correct role */
+    // Active user is loaded as enabled with the correct role.
     @Test
     void loadsByEmailAndReturnsEnabledForActiveUser() {
         AuthenticatedUser activeUser = new AuthenticatedUser(1L, "john@test.com", "hashed-pass",
@@ -48,7 +43,7 @@ class AppUserDetailsServiceTest {
         verify(userRepository).findAuthenticatedUserByEmail("john@test.com");
     }
 
-    /** A pending user should be loaded as disabled so Spring Security blocks login */
+    // Pending user is loaded as disabled.
     @Test
     void returnsDisabledForPendingUser() {
         AuthenticatedUser pendingUser = new AuthenticatedUser(2L, "jane@test.com", "hashed-pass",
@@ -61,7 +56,7 @@ class AppUserDetailsServiceTest {
         assertFalse(result.isEnabled());
     }
 
-    /** A non-existent email should throw UsernameNotFoundException */
+    // Non-existent email throws UsernameNotFoundException.
     @Test
     void throwsWhenUserNotFound() {
         when(userRepository.findAuthenticatedUserByEmail("nobody@test.com"))

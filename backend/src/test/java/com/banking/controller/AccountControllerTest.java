@@ -27,14 +27,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Integration tests for the AccountController.
- * Tests customer account viewing, employee account management (create, update, list),
- * role-based access control, and input validation on account operations.
- */
-@SpringBootTest          // Boots full Spring context with real services and H2 database
-@AutoConfigureMockMvc    // Provides MockMvc to simulate HTTP requests
-@Transactional           // Rolls back database changes after each test
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
 class AccountControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -43,28 +38,22 @@ class AccountControllerTest {
     @Autowired private JwtUtil jwtUtil;
     @Autowired private PasswordEncoder passwordEncoder;
 
-    private String employeeToken;   // JWT for employee (can manage all accounts)
-    private String customerToken;   // JWT for customer (can only view own accounts)
-    private Long customerId;        // Customer ID for account creation tests
+    private String employeeToken;
+    private String customerToken;
+    private Long customerId;
 
-    /**
-     * Creates an active customer with a checking account and generates JWT tokens
-     * for both the customer and the seeded employee.
-     */
+    // Creates a customer with a checking account and generates JWT tokens for both roles.
     @BeforeEach
     void setUp() {
-        // Create a customer with a known checking account for testing
         User customer = new User("Acc", "Tester", "acctest@test.com",
                 passwordEncoder.encode("pass"), "777777777", "0600000007", User.Role.CUSTOMER);
         customer.setStatus(UserStatus.ACTIVE);
         customer = userRepository.save(customer);
         customerId = customer.getId();
 
-        // Create a checking account with €1000 balance, €0 absolute limit, €2000 daily limit
         accountRepository.save(new Account("NL01ACC0001", AccountType.CHECKING,
                 new BigDecimal("1000.00"), BigDecimal.ZERO, new BigDecimal("2000.00"), customer));
 
-        // Load the seeded employee and generate tokens for both roles
         User employee = userRepository.findByEmail("employee@bank.com").orElseThrow();
         customerToken = jwtUtil.generateToken(customer.getId(), customer.getEmail());
         employeeToken = jwtUtil.generateToken(employee.getId(), employee.getEmail());
@@ -72,7 +61,7 @@ class AccountControllerTest {
 
     // ── GET /api/accounts/me ────────────────────
 
-    /** Customers should see their own active accounts with correct IBAN and type */
+    // Customer can retrieve their own accounts.
     @Test
     void getMyAccountsReturnsCustomerAccounts() throws Exception {
         mockMvc.perform(get("/api/accounts/me")
@@ -84,7 +73,7 @@ class AccountControllerTest {
 
     // ── GET /api/accounts (employee) ────────────────────
 
-    /** Employees can browse all accounts in the system */
+    // Employee can list all accounts in the system.
     @Test
     void getAllAccountsReturnsPageForEmployee() throws Exception {
         mockMvc.perform(get("/api/accounts")
@@ -93,7 +82,7 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.content").isArray());
     }
 
-    /** Customers must not access the employee-only account list */
+    // Customer is denied access to the employee-only account list.
     @Test
     void getAllAccountsReturns403ForCustomer() throws Exception {
         mockMvc.perform(get("/api/accounts")
@@ -103,13 +92,12 @@ class AccountControllerTest {
 
     // ── POST /api/accounts (employee) ────────────────────
 
-    /** Employees can create new accounts for existing customers */
+    // Employee can create a new account for an existing customer.
     @Test
     void createAccountReturns201OnSuccess() throws Exception {
         mockMvc.perform(post("/api/accounts")
                         .header("Authorization", "Bearer " + employeeToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        // Use .formatted() to inject the dynamic customer ID into the JSON
                         .content("""
                                 {
                                   "customerId": %d,
@@ -120,10 +108,10 @@ class AccountControllerTest {
                                 """.formatted(customerId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accountType").value("SAVINGS"))
-                .andExpect(jsonPath("$.iban").isNotEmpty());  // IBAN is auto-generated
+                .andExpect(jsonPath("$.iban").isNotEmpty());
     }
 
-    /** Creating an account for a non-existent customer should return 404 */
+    // Creating an account for a non-existent customer returns 404.
     @Test
     void createAccountReturns404WhenCustomerNotFound() throws Exception {
         mockMvc.perform(post("/api/accounts")
@@ -143,7 +131,7 @@ class AccountControllerTest {
 
     // ── PUT /api/accounts/{iban} (employee) ────────────────────
 
-    /** Deactivating an account should persist the change in the database */
+    // Employee can deactivate an account and the change persists in the database.
     @Test
     void updateAccountDeactivatesAccount() throws Exception {
         mockMvc.perform(put("/api/accounts/NL01ACC0001")
@@ -155,11 +143,10 @@ class AccountControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.iban").value("NL01ACC0001"));
 
-        // Verify the deactivation actually persisted to the database
         assertFalse(accountRepository.findById("NL01ACC0001").orElseThrow().isActive());
     }
 
-    /** Updating a non-existent account should return 404 */
+    // Updating a non-existent account returns 404.
     @Test
     void updateAccountReturns404WhenNotFound() throws Exception {
         mockMvc.perform(put("/api/accounts/NL99NONEXIST")
@@ -172,9 +159,9 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.error").exists());
     }
 
-    // ── Validation rules ────────────────────
+    // ── Validation ────────────────────
 
-    /** customerId is required — omitting it should fail @NotNull validation */
+    // Missing customerId is rejected with 400.
     @Test
     void createAccountRejectsMissingCustomerId() throws Exception {
         mockMvc.perform(post("/api/accounts")
@@ -191,7 +178,7 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("customerId")));
     }
 
-    /** Only CHECKING and SAVINGS are valid — anything else should fail the @Pattern check */
+    // Invalid account type is rejected with 400.
     @Test
     void createAccountRejectsInvalidAccountType() throws Exception {
         mockMvc.perform(post("/api/accounts")
@@ -209,7 +196,7 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("accountType")));
     }
 
-    /** Daily limit must be zero or positive — negative values rejected by @Min(0) */
+    // Negative daily limit is rejected with 400.
     @Test
     void createAccountRejectsNegativeDailyLimit() throws Exception {
         mockMvc.perform(post("/api/accounts")
@@ -227,7 +214,7 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("dailyLimit")));
     }
 
-    /** Absolute limit must be zero or negative (overdraft floor) — positive values rejected by @Max(0) */
+    // Positive absolute limit is rejected with 400.
     @Test
     void createAccountRejectsPositiveAbsoluteLimit() throws Exception {
         mockMvc.perform(post("/api/accounts")
@@ -245,7 +232,7 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("absoluteLimit")));
     }
 
-    /** Same absolute limit rule applies when updating an existing account */
+    // Positive absolute limit on update is rejected with 400.
     @Test
     void updateAccountRejectsPositiveAbsoluteLimit() throws Exception {
         mockMvc.perform(put("/api/accounts/NL01ACC0001")
@@ -258,7 +245,7 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.error").value(containsString("absoluteLimit")));
     }
 
-    /** Same daily limit rule applies when updating an existing account */
+    // Negative daily limit on update is rejected with 400.
     @Test
     void updateAccountRejectsNegativeDailyLimit() throws Exception {
         mockMvc.perform(put("/api/accounts/NL01ACC0001")
