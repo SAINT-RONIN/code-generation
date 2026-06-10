@@ -16,27 +16,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Handles authentication-related endpoints: registration and login.
- * All endpoints under /api/auth are public (no JWT required).
- */
-@RestController                         // Combines @Controller + @ResponseBody — returns JSON directly
-@RequestMapping("/api/auth")            // Base path for all endpoints in this controller
-@Tag(name = "Auth", description = "Authentication and registration endpoints") // Swagger grouping
+@RestController
+@RequestMapping("/api/auth")
+@Tag(name = "Auth", description = "Authentication and registration endpoints")
 public class AuthController {
 
     private final IAuthService authService;
 
-    // Constructor injection — Spring automatically injects the AuthService implementation
     public AuthController(IAuthService authService) {
         this.authService = authService;
     }
 
-    /**
-     * Registers a new customer account with PENDING status.
-     * The customer cannot log in until an employee approves them.
-     * Returns 201 Created on success.
-     */
     @Operation(summary = "Register a new customer")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Registration successful"),
@@ -45,16 +35,10 @@ public class AuthController {
     })
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
-        // @Valid triggers Jakarta Bean Validation on the request DTO fields
         authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body("Registration successful. Await employee approval.");
     }
 
-    /**
-     * Authenticates a user by email and password, and returns a JWT token with their role.
-     * The frontend stores the token in localStorage and sends it as a Bearer token
-     * in the Authorization header on all subsequent requests.
-     */
     @Operation(summary = "Log in and get a JWT token")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Login successful"),

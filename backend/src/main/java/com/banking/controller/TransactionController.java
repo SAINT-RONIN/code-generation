@@ -23,12 +23,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Handles creating and querying transactions (transfers, deposits, withdrawals).
- * Both customers and employees can access these endpoints, but with different rules:
- * - Customers can only operate on their own accounts
- * - Employees can transfer between any two checking accounts of different customers
- */
 @RestController
 @RequestMapping("/api/transactions")
 @Tag(name = "Transactions", description = "Transaction endpoints")
@@ -37,20 +31,10 @@ public class TransactionController {
 
     private final ITransactionService transactionService;
 
-    // Constructor injection of the transaction service
     public TransactionController(ITransactionService transactionService) {
         this.transactionService = transactionService;
     }
 
-    /**
-     * Creates a new transaction. The transaction type (TRANSFER, DEPOSIT, WITHDRAWAL)
-     * is automatically inferred from which IBANs are provided:
-     * - Both fromIban and toIban → TRANSFER
-     * - Only toIban → DEPOSIT
-     * - Only fromIban → WITHDRAWAL
-     *
-     * Employees are routed to a separate flow that enforces checking-to-checking rules.
-     */
     @Operation(summary = "Create a transaction (transfer, deposit, or withdrawal)")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Transaction completed"),
@@ -64,7 +48,6 @@ public class TransactionController {
             @Valid @RequestBody TransactionRequest request,
             @AuthenticationPrincipal AuthenticatedUser caller) {
         TransactionResponse response;
-        // Route to different service methods based on the caller's role
         if (caller.isEmployee()) {
             response = transactionService.createEmployeeTransfer(request, caller.getEmail());
         } else {
@@ -73,21 +56,14 @@ public class TransactionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * Returns paginated transaction history with optional filters (date range, amount, IBAN, type).
-     * Customers only see transactions involving their own accounts.
-     * Employees see all transactions across the entire system.
-     */
     @Operation(summary = "Get filtered transaction history")
     @ApiResponse(responseCode = "200", description = "Transactions retrieved")
     @GetMapping
     public ResponseEntity<Page<TransactionResponse>> getTransactions(
-            // @ModelAttribute binds query parameters to the TransactionFilter DTO fields
             @ModelAttribute TransactionFilter filter,
             Pageable pageable,
             @AuthenticationPrincipal AuthenticatedUser caller) {
         Page<TransactionResponse> page;
-        // Employees see all transactions; customers only see their own
         if (caller.isEmployee()) {
             page = transactionService.findAllTransactions(filter, pageable);
         } else {
